@@ -122,7 +122,66 @@ export default function SEPResultScreen() {
           throw sessionError;
         }
       } else {
-        // SEP failed - create admin alert and revoke assignment
+        // SEP failed - globally revoke DD status
+        console.log('SEP failed - globally revoking DD status for user:', user.id);
+        
+        // 1. Update user's dd_status to 'revoked'
+        const { error: userUpdateError } = await supabase
+          .from('users')
+          .update({ dd_status: 'revoked' })
+          .eq('id', user.id);
+
+        if (userUpdateError) {
+          console.error('Error updating user dd_status:', userUpdateError);
+        } else {
+          console.log('User dd_status updated to revoked');
+        }
+
+        // 2. Revoke ALL DD assignments for this user (not just this event)
+        const { data: allAssignments, error: assignmentError } = await supabase
+          .from('dd_assignments')
+          .update({ status: 'revoked', updated_at: new Date().toISOString() })
+          .eq('user_id', user.id)
+          .select();
+
+        if (assignmentError) {
+          console.error('Error revoking all assignments:', assignmentError);
+        } else {
+          console.log('All assignments revoked:', allAssignments?.length || 0, 'assignments');
+        }
+
+        // 3. Reject ALL pending and approved DD requests for this user
+        const { data: rejectedRequests, error: requestsError } = await supabase
+          .from('dd_requests')
+          .update({ status: 'rejected' })
+          .eq('user_id', user.id)
+          .in('status', ['pending', 'approved'])
+          .select();
+
+        if (requestsError) {
+          console.error('Error rejecting requests:', requestsError);
+        } else {
+          console.log('Requests rejected:', rejectedRequests?.length || 0, 'requests');
+        }
+
+        // 4. End ALL active DD sessions for this user
+        const { data: endedSessions, error: sessionsError } = await supabase
+          .from('dd_sessions')
+          .update({ 
+            ended_at: new Date().toISOString(),
+            is_active: false 
+          })
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .select();
+
+        if (sessionsError) {
+          console.error('Error ending active sessions:', sessionsError);
+        } else {
+          console.log('Active sessions ended:', endedSessions?.length || 0, 'sessions');
+        }
+
+        // 5. Create admin alert for the specific event where they failed
         const { error: alertError } = await supabase
           .from('admin_alerts')
           .insert({
@@ -134,17 +193,6 @@ export default function SEPResultScreen() {
 
         if (alertError) {
           console.error('Error creating admin alert:', alertError);
-        }
-
-        // Update DD assignment status to revoked
-        const { error: assignmentError } = await supabase
-          .from('dd_assignments')
-          .update({ status: 'revoked' })
-          .eq('user_id', user.id)
-          .eq('event_id', eventId);
-
-        if (assignmentError) {
-          console.error('Error updating assignment:', assignmentError);
         }
       }
 

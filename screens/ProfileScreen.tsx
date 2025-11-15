@@ -8,11 +8,19 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshUser } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // Refresh user data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshUser();
+    }, [])
+  );
 
   const handleLogout = async () => {
     Alert.alert(
@@ -85,9 +93,25 @@ export default function ProfileScreen() {
 
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>DD Status</Text>
-          <Text style={styles.infoValue}>
-            {user.isDD ? '✓ Registered DD' : 'Not a DD'}
-          </Text>
+          {user.isDD ? (
+            <View style={[
+              styles.statusBadge,
+              { 
+                backgroundColor: user.ddStatus === 'revoked' ? '#FFEBEE' : '#E8F5E9'
+              }
+            ]}>
+              <Text style={[
+                styles.statusBadgeText,
+                { 
+                  color: user.ddStatus === 'revoked' ? '#C62828' : '#2E7D32'
+                }
+              ]}>
+                {user.ddStatus === 'revoked' ? '⚠️ Revoked' : '✓ Active DD'}
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.infoValue}>Not a DD</Text>
+          )}
         </View>
 
         {user.isDD && (
@@ -220,6 +244,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   roleBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statusBadgeText: {
     fontSize: 14,
     fontWeight: '600',
   },

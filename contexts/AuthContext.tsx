@@ -49,10 +49,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           groupId: data.group_id,
           role: data.role,
           isDD: data.is_dd,
+          ddStatus: data.dd_status || 'none',
           carMake: data.car_make,
           carModel: data.car_model,
           carPlate: data.car_plate,
+          phoneNumber: data.phone_number,
           licensePhotoUrl: data.license_photo_url,
+          profilePhotoUrl: data.profile_photo_url,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
         } as User;

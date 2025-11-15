@@ -225,6 +225,15 @@ export default function DDActiveSessionScreen() {
           </Text>
         </View>
 
+        {/* View Ride Queue Button */}
+        <TouchableOpacity
+          style={styles.rideQueueButton}
+          onPress={() => navigation.navigate('DDRideQueue', { sessionId: session.id, eventId })}
+        >
+          <Text style={styles.rideQueueButtonIcon}>🚗</Text>
+          <Text style={styles.rideQueueButtonText}>View Ride Queue</Text>
+        </TouchableOpacity>
+
         {/* End Session Button */}
         <TouchableOpacity
           style={styles.endButton}
@@ -388,6 +397,29 @@ const styles = StyleSheet.create({
   endButtonText: {
     fontSize: 18,
     fontWeight: '700',
+    color: '#fff',
+  },
+  rideQueueButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    marginBottom: 16,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  rideQueueButtonIcon: {
+    fontSize: 24,
+    marginRight: 8,
+  },
+  rideQueueButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#fff',
   },
 });

@@ -7,6 +7,7 @@ import EventsListScreen from './EventsListScreen';
 import EventDetailScreen from './EventDetailScreen';
 import CreateEventScreen from './CreateEventScreen';
 import DDsListScreen from './DDsListScreen';
+import DDDetailScreen from './DDDetailScreen';
 import AdminDashboardScreen from './AdminDashboardScreen';
 import ProfileScreen from './ProfileScreen';
 import SEPReactionScreen from './onboarding/SEPReactionScreen';
@@ -14,10 +15,14 @@ import SEPPhraseScreen from './onboarding/SEPPhraseScreen';
 import SEPSelfieScreen from './onboarding/SEPSelfieScreen';
 import SEPResultScreen from './onboarding/SEPResultScreen';
 import DDActiveSessionScreen from './DDActiveSessionScreen';
+import DDRideQueueScreen from './DDRideQueueScreen';
+import RideStatusScreen from './RideStatusScreen';
+import RidesScreen from './RidesScreen';
 
 const Tab = createBottomTabNavigator();
 const EventsStack = createStackNavigator();
 const DDsStack = createStackNavigator();
+const RidesStack = createStackNavigator();
 const AdminStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 
@@ -69,6 +74,16 @@ function EventsStackNavigator() {
         component={DDActiveSessionScreen}
         options={{ title: 'Active DD Session' }}
       />
+      <EventsStack.Screen 
+        name="DDRideQueue" 
+        component={DDRideQueueScreen}
+        options={{ title: 'Ride Queue' }}
+      />
+      <EventsStack.Screen 
+        name="RideStatus" 
+        component={RideStatusScreen}
+        options={{ title: 'Ride Status' }}
+      />
     </EventsStack.Navigator>
   );
 }
@@ -82,7 +97,45 @@ function DDsStackNavigator() {
         component={DDsListScreen}
         options={{ title: 'Active DDs' }}
       />
+      <DDsStack.Screen 
+        name="DDDetail" 
+        component={DDDetailScreen}
+        options={{ title: 'DD Details' }}
+      />
+      <DDsStack.Screen 
+        name="RideStatus" 
+        component={RideStatusScreen}
+        options={{ title: 'Ride Status' }}
+      />
     </DDsStack.Navigator>
+  );
+}
+
+// Stack navigator for Rides tab
+function RidesStackNavigator() {
+  return (
+    <RidesStack.Navigator>
+      <RidesStack.Screen 
+        name="RidesMain" 
+        component={RidesScreen}
+        options={{ title: 'Rides' }}
+      />
+      <RidesStack.Screen 
+        name="DDRideQueue" 
+        component={DDRideQueueScreen}
+        options={{ title: 'Ride Queue' }}
+      />
+      <RidesStack.Screen 
+        name="RideStatus" 
+        component={RideStatusScreen}
+        options={{ title: 'Ride Status' }}
+      />
+      <RidesStack.Screen 
+        name="EventDetail" 
+        component={EventDetailScreen}
+        options={{ title: 'Event Details' }}
+      />
+    </RidesStack.Navigator>
   );
 }
 
@@ -136,7 +189,15 @@ export default function MainAppScreen() {
         name="DDs" 
         component={DDsStackNavigator}
         options={{
-          tabBarLabel: 'DDs',
+          tabBarLabel: 'Find DDs',
+          tabBarIcon: ({ color }) => <TabIcon name="search" color={color} />,
+        }}
+      />
+      <Tab.Screen 
+        name="Rides" 
+        component={RidesStackNavigator}
+        options={{
+          tabBarLabel: 'Rides',
           tabBarIcon: ({ color }) => <TabIcon name="car" color={color} />,
         }}
       />
@@ -168,6 +229,7 @@ function TabIcon({ name, color }: { name: string; color: string }) {
   const icons: { [key: string]: string } = {
     calendar: '📅',
     car: '🚗',
+    search: '🔍',
     shield: '🛡️',
     person: '👤',
   };

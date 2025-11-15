@@ -9,7 +9,13 @@
     "web": "expo start --web",
     "verify-db": "ts-node scripts/verify-database.ts",
     "reset-onboarding": "ts-node scripts/reset-onboarding.ts",
-    "make-admin": "ts-node scripts/make-admin.ts"
+    "make-admin": "ts-node scripts/make-admin.ts",
+    "cleanup-revoked": "ts-node scripts/cleanup-revoked-dd.ts",
+    "reinstate-user": "ts-node scripts/reinstate-user.ts",
+    "cleanup-rejected": "ts-node scripts/cleanup-rejected-requests.ts",
+    "check-requests": "ts-node scripts/check-user-requests.ts",
+    "delete-request": "ts-node scripts/delete-user-request.ts",
+    "add-profile-photo": "ts-node scripts/add-profile-photo-column.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",

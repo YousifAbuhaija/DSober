@@ -10,10 +10,13 @@ export interface User {
   groupId: string;
   role: 'admin' | 'member';
   isDD: boolean;
+  ddStatus: 'none' | 'active' | 'revoked';
   carMake?: string;
   carModel?: string;
   carPlate?: string;
+  phoneNumber?: string;
   licensePhotoUrl?: string;
+  profilePhotoUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,4 +94,19 @@ export interface AdminAlert {
   createdAt: Date;
   resolvedByAdminId?: string;
   resolvedAt?: Date;
+}
+
+export interface RideRequest {
+  id: string;
+  ddUserId: string;
+  riderUserId: string;
+  eventId: string;
+  pickupLocationText: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  status: 'pending' | 'accepted' | 'picked_up' | 'completed' | 'cancelled';
+  createdAt: Date;
+  acceptedAt?: Date;
+  pickedUpAt?: Date;
+  completedAt?: Date;
 }

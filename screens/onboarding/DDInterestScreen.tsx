@@ -32,11 +32,12 @@ export default function DDInterestScreen({ navigation }: DDInterestScreenProps) 
         throw new Error('No user session found');
       }
 
-      // Update user's isDD field
+      // Update user's isDD field and dd_status
       const { error } = await supabase
         .from('users')
         .update({
           is_dd: isDD,
+          dd_status: isDD ? 'active' : 'none',
           updated_at: new Date().toISOString(),
         })
         .eq('id', session.user.id);

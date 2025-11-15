@@ -24,9 +24,37 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
   const [carMake, setCarMake] = useState('');
   const [carModel, setCarModel] = useState('');
   const [carPlate, setCarPlate] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [licensePhotoUri, setLicensePhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const validatePhoneNumber = (phone: string): boolean => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Check if it's a valid US phone number (10 digits)
+    // or international format (11+ digits starting with 1)
+    return digitsOnly.length === 10 || (digitsOnly.length >= 11 && digitsOnly[0] === '1');
+  };
+
+  const formatPhoneNumber = (phone: string): string => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Format as (XXX) XXX-XXXX for 10 digits
+    if (digitsOnly.length === 10) {
+      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+    }
+    
+    // Format as +1 (XXX) XXX-XXXX for 11 digits starting with 1
+    if (digitsOnly.length === 11 && digitsOnly[0] === '1') {
+      return `+1 (${digitsOnly.slice(1, 4)}) ${digitsOnly.slice(4, 7)}-${digitsOnly.slice(7)}`;
+    }
+    
+    // Return as-is for other formats
+    return phone;
+  };
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -78,6 +106,19 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
       return;
     }
 
+    if (!phoneNumber.trim()) {
+      Alert.alert('Error', 'Please enter your phone number');
+      return;
+    }
+
+    if (!validatePhoneNumber(phoneNumber)) {
+      Alert.alert(
+        'Invalid Phone Number',
+        'Please enter a valid phone number (10 digits for US numbers)'
+      );
+      return;
+    }
+
     if (!licensePhotoUri) {
       Alert.alert('Error', 'Please upload a photo of your driver\'s license');
       return;
@@ -99,6 +140,9 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
       );
       setUploadingPhoto(false);
 
+      // Format phone number before saving
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+
       // Update user profile with driver information
       const { error } = await supabase
         .from('users')
@@ -106,6 +150,7 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
           car_make: carMake.trim(),
           car_model: carModel.trim(),
           car_plate: carPlate.trim().toUpperCase(),
+          phone_number: formattedPhone,
           license_photo_url: licensePhotoUrl,
           updated_at: new Date().toISOString(),
         })
@@ -175,6 +220,23 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
             autoCorrect={false}
             maxLength={10}
           />
+        </View>
+
+        {/* Phone Number Input */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Phone Number *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., (555) 123-4567"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            keyboardType="phone-pad"
+            autoCorrect={false}
+            maxLength={20}
+          />
+          <Text style={styles.hint}>
+            Your phone number will be visible to riders who need a DD
+          </Text>
         </View>
 
         {/* License Photo Upload */}

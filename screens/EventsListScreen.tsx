@@ -13,6 +13,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Event } from '../types/database.types';
+import { updateEventStatusesToActive, getEventStatusDisplay, getEventStatusColor } from '../utils/eventStatus';
 
 type EventsStackParamList = {
   EventsList: undefined;
@@ -33,6 +34,9 @@ export default function EventsListScreen() {
     if (!user?.groupId) return;
 
     try {
+      // First, auto-update any upcoming events that should now be active
+      await updateEventStatusesToActive(user.groupId);
+
       const { data, error } = await supabase
         .from('events')
         .select('*')

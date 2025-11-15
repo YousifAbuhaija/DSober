@@ -10,11 +10,12 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Event, DDAssignment, DDRequest, User } from '../types/database.types';
+import { markEventAsCompleted } from '../utils/eventStatus';
 
 type EventsStackParamList = {
   EventsList: undefined;
@@ -47,7 +48,7 @@ interface DDAssignmentWithUser extends DDAssignment {
 export default function EventDetailScreen() {
   const route = useRoute<EventDetailRouteProp>();
   const navigation = useNavigation<NavigationProp>();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { eventId } = route.params;
 
   const [event, setEvent] = useState<Event | null>(null);
@@ -61,13 +62,30 @@ export default function EventDetailScreen() {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [assigningDD, setAssigningDD] = useState(false);
   const [activeSession, setActiveSession] = useState<any>(null);
+  const [markingCompleted, setMarkingCompleted] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
   }, [eventId]);
 
+  // Refresh data when screen comes into focus (e.g., after SEP verification)
+  useFocusEffect(
+    React.useCallback(() => {
+      // Refresh user data to get latest dd_status
+      refreshUser();
+      fetchEventDetails();
+    }, [eventId])
+  );
+
   const fetchEventDetails = async () => {
     try {
+      console.log('fetchEventDetails called for eventId:', eventId);
+      
+      // Reset user-specific state before fetching
+      setUserDDRequest(null);
+      setUserDDAssignment(null);
+      setActiveSession(null);
+
       // Fetch event
       const { data: eventData, error: eventError } = await supabase
         .from('events')
@@ -117,13 +135,14 @@ export default function EventDetailScreen() {
 
       setDDAssignments(mappedAssignments);
 
-      // Check if current user has a DD request
+      // Check if current user has a DD request (only pending or approved, not rejected)
       if (user?.id) {
         const { data: requestData } = await supabase
           .from('dd_requests')
           .select('*')
           .eq('event_id', eventId)
           .eq('user_id', user.id)
+          .in('status', ['pending', 'approved'])
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
@@ -140,6 +159,7 @@ export default function EventDetailScreen() {
 
         // Check if current user has a DD assignment
         const userAssignment = mappedAssignments.find((a) => a.userId === user.id);
+        console.log('User assignment found:', userAssignment);
         if (userAssignment) {
           setUserDDAssignment(userAssignment);
         }
@@ -172,11 +192,17 @@ export default function EventDetailScreen() {
 
     setRequestingDD(true);
     try {
-      const { error } = await supabase.from('dd_requests').insert({
-        event_id: eventId,
-        user_id: user.id,
-        status: 'pending',
-      });
+      // Use upsert to handle case where a previous request exists (e.g., rejected request)
+      const { error } = await supabase
+        .from('dd_requests')
+        .upsert({
+          event_id: eventId,
+          user_id: user.id,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        }, {
+          onConflict: 'event_id,user_id',
+        });
 
       if (error) throw error;
 
@@ -339,7 +365,65 @@ export default function EventDetailScreen() {
     }
   };
 
+  const handleMarkAsCompleted = async () => {
+    Alert.alert(
+      'Mark Event as Completed',
+      'Are you sure you want to mark this event as completed? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Mark as Completed',
+          style: 'destructive',
+          onPress: async () => {
+            setMarkingCompleted(true);
+            try {
+              const result = await markEventAsCompleted(eventId);
+              
+              if (result.success) {
+                Alert.alert('Success', 'Event marked as completed');
+                fetchEventDetails(); // Refresh to show updated status
+              } else {
+                Alert.alert('Error', result.error || 'Failed to mark event as completed');
+              }
+            } catch (error) {
+              console.error('Error marking event as completed:', error);
+              Alert.alert('Error', 'Failed to mark event as completed');
+            } finally {
+              setMarkingCompleted(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderDDStatusSection = () => {
+    console.log('renderDDStatusSection - userDDAssignment:', userDDAssignment);
+    console.log('renderDDStatusSection - activeSession:', activeSession);
+    console.log('renderDDStatusSection - user.ddStatus:', user?.ddStatus);
+    
+    // Check if user is globally revoked as a DD
+    if (user?.ddStatus === 'revoked') {
+      return (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your DD Status</Text>
+          <View style={[styles.statusBox, { backgroundColor: '#FFEBEE' }]}>
+            <Text style={[styles.statusBoxText, { color: '#C62828' }]}>
+              ✗ Your DD privileges have been revoked
+            </Text>
+          </View>
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>
+              You failed SEP verification and can no longer serve as a DD. An admin must reinstate you to regain DD privileges.
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    
     if (!user?.isDD) {
       return (
         <View style={styles.infoBox}>
@@ -369,6 +453,7 @@ export default function EventDetailScreen() {
 
     // User has an assignment
     if (userDDAssignment) {
+      console.log('User has assignment with status:', userDDAssignment.status);
       if (userDDAssignment.status === 'assigned') {
         return (
           <View style={styles.section}>
@@ -421,6 +506,28 @@ export default function EventDetailScreen() {
               ✗ Your DD request was not approved
             </Text>
           </View>
+        </View>
+      );
+    }
+
+    // Check if event is completed
+    if (event.status === 'completed') {
+      return (
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>
+            This event has been completed. DD requests are no longer available.
+          </Text>
+        </View>
+      );
+    }
+
+    // Admins should use "Assign DD" instead of requesting
+    if (user?.role === 'admin') {
+      return (
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>
+            As an admin, you can assign yourself as a DD using the "Assign DD" button below.
+          </Text>
         </View>
       );
     }
@@ -532,6 +639,22 @@ export default function EventDetailScreen() {
           <TouchableOpacity style={styles.secondaryButton} onPress={openAssignModal}>
             <Text style={styles.secondaryButtonText}>Assign DD</Text>
           </TouchableOpacity>
+          
+          {event.status !== 'completed' && (
+            <TouchableOpacity
+              style={[styles.secondaryButton, styles.completeButton, markingCompleted && styles.buttonDisabled]}
+              onPress={handleMarkAsCompleted}
+              disabled={markingCompleted}
+            >
+              {markingCompleted ? (
+                <ActivityIndicator color="#8E8E93" size="small" />
+              ) : (
+                <Text style={[styles.secondaryButtonText, styles.completeButtonText]}>
+                  Mark as Completed
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -709,11 +832,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#007AFF',
+    marginTop: 12,
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#007AFF',
+  },
+  completeButton: {
+    borderColor: '#8E8E93',
+  },
+  completeButtonText: {
+    color: '#8E8E93',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   ddCard: {
     backgroundColor: '#F2F2F7',
