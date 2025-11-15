@@ -7,20 +7,119 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import { Group, SEPBaseline } from '../types/database.types';
 
 export default function ProfileScreen() {
   const { user, signOut, refreshUser } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [groupName, setGroupName] = useState<string | null>(null);
+  const [sepBaseline, setSepBaseline] = useState<SEPBaseline | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Edit driver info state
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editCarMake, setEditCarMake] = useState('');
+  const [editCarModel, setEditCarModel] = useState('');
+  const [editCarPlate, setEditCarPlate] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Fetch group name and SEP baseline
+  const fetchAdditionalData = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      // Fetch group name
+      if (user.groupId) {
+        const { data: groupData, error: groupError } = await supabase
+          .from('groups')
+          .select('name')
+          .eq('id', user.groupId)
+          .single();
+
+        if (!groupError && groupData) {
+          setGroupName(groupData.name);
+        }
+      }
+
+      // Fetch SEP baseline
+      const { data: baselineData, error: baselineError } = await supabase
+        .from('sep_baselines')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!baselineError && baselineData) {
+        setSepBaseline({
+          id: baselineData.id,
+          userId: baselineData.user_id,
+          reactionAvgMs: baselineData.reaction_avg_ms,
+          phraseDurationSec: baselineData.phrase_duration_sec,
+          selfieUrl: baselineData.selfie_url,
+          createdAt: new Date(baselineData.created_at),
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching additional data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Refresh user data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       refreshUser();
-    }, [])
+      fetchAdditionalData();
+    }, [user?.id])
   );
+
+  const handleEditDriverInfo = () => {
+    setEditCarMake(user?.carMake || '');
+    setEditCarModel(user?.carModel || '');
+    setEditCarPlate(user?.carPlate || '');
+    setEditModalVisible(true);
+  };
+
+  const handleSaveDriverInfo = async () => {
+    if (!user) return;
+
+    // Validate required fields
+    if (!editCarMake.trim() || !editCarModel.trim() || !editCarPlate.trim()) {
+      Alert.alert('Validation Error', 'All fields are required.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          car_make: editCarMake.trim(),
+          car_model: editCarModel.trim(),
+          car_plate: editCarPlate.trim(),
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Refresh user data
+      await refreshUser();
+      setEditModalVisible(false);
+      Alert.alert('Success', 'Driver information updated successfully.');
+    } catch (error) {
+      console.error('Error updating driver info:', error);
+      Alert.alert('Error', 'Failed to update driver information. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -49,7 +148,7 @@ export default function ProfileScreen() {
     );
   };
 
-  if (!user) {
+  if (!user || loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -76,6 +175,13 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Details</Text>
         
+        {groupName && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Group</Text>
+            <Text style={styles.infoValue}>{groupName}</Text>
+          </View>
+        )}
+
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Role</Text>
           <View style={[
@@ -117,7 +223,15 @@ export default function ProfileScreen() {
         {user.isDD && (
           <>
             <View style={styles.divider} />
-            <Text style={styles.subsectionTitle}>Driver Information</Text>
+            <View style={styles.subsectionHeader}>
+              <Text style={styles.subsectionTitle}>Driver Information</Text>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={handleEditDriverInfo}
+              >
+                <Text style={styles.editButtonText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
             
             {user.carMake && user.carModel && (
               <View style={styles.infoRow}>
@@ -138,6 +252,26 @@ export default function ProfileScreen() {
         )}
       </View>
 
+      {/* SEP Baseline Section */}
+      {sepBaseline && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>SEP Baseline</Text>
+          <Text style={styles.sectionDescription}>
+            Your baseline measurements from onboarding
+          </Text>
+          
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Reaction Time</Text>
+            <Text style={styles.infoValue}>{sepBaseline.reactionAvgMs} ms</Text>
+          </View>
+          
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Phrase Duration</Text>
+            <Text style={styles.infoValue}>{sepBaseline.phraseDurationSec.toFixed(2)} sec</Text>
+          </View>
+        </View>
+      )}
+
       {/* Logout Button */}
       <TouchableOpacity
         style={styles.logoutButton}
@@ -152,6 +286,70 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <Text style={styles.versionText}>DSober v1.0.0</Text>
+
+      {/* Edit Driver Info Modal */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Driver Information</Text>
+            
+            <Text style={styles.inputLabel}>Car Make</Text>
+            <TextInput
+              style={styles.input}
+              value={editCarMake}
+              onChangeText={setEditCarMake}
+              placeholder="e.g., Toyota"
+              placeholderTextColor="#8E8E93"
+            />
+            
+            <Text style={styles.inputLabel}>Car Model</Text>
+            <TextInput
+              style={styles.input}
+              value={editCarModel}
+              onChangeText={setEditCarModel}
+              placeholder="e.g., Camry"
+              placeholderTextColor="#8E8E93"
+            />
+            
+            <Text style={styles.inputLabel}>License Plate</Text>
+            <TextInput
+              style={styles.input}
+              value={editCarPlate}
+              onChangeText={setEditCarPlate}
+              placeholder="e.g., ABC123"
+              placeholderTextColor="#8E8E93"
+              autoCapitalize="characters"
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setEditModalVisible(false)}
+                disabled={saving}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveDriverInfo}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -216,12 +414,34 @@ const styles = StyleSheet.create({
     color: '#000',
     marginBottom: 16,
   },
+  sectionDescription: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 12,
+    marginTop: -8,
+  },
+  subsectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 8,
+  },
   subsectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#000',
-    marginBottom: 12,
-    marginTop: 8,
+  },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#007AFF',
+    borderRadius: 6,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   infoRow: {
     flexDirection: 'row',
@@ -282,5 +502,70 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     textAlign: 'center',
     marginBottom: 32,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  input: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#000',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  cancelButton: {
+    backgroundColor: '#F2F2F7',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

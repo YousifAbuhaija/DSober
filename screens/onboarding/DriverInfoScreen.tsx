@@ -167,8 +167,8 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
 
       if (error) throw error;
 
-      // Navigate to SEP baseline first
-      navigation.navigate('SEPReaction', { mode: 'baseline' });
+      // Navigate to profile photo screen
+      navigation.navigate('ProfilePhoto');
 
       // Refresh user context after navigation (non-blocking)
       refreshUser().catch(err => console.error('Error refreshing user:', err));

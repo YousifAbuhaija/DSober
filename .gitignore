@@ -28,3 +28,6 @@ web-build/
 
 # Markdown
 *.md
+
+# SQL
+*.sql

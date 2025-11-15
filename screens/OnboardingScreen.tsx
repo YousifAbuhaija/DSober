@@ -4,6 +4,7 @@ import BasicInfoScreen from './onboarding/BasicInfoScreen';
 import GroupJoinScreen from './onboarding/GroupJoinScreen';
 import DDInterestScreen from './onboarding/DDInterestScreen';
 import DriverInfoScreen from './onboarding/DriverInfoScreen';
+import ProfilePhotoScreen from './onboarding/ProfilePhotoScreen';
 import SEPReactionScreen from './onboarding/SEPReactionScreen';
 import SEPPhraseScreen from './onboarding/SEPPhraseScreen';
 import SEPSelfieScreen from './onboarding/SEPSelfieScreen';
@@ -15,6 +16,7 @@ export type OnboardingStackParamList = {
   GroupJoin: undefined;
   DDInterest: undefined;
   DriverInfo: undefined;
+  ProfilePhoto: undefined;
   SEPReaction: { mode: 'baseline' | 'attempt'; eventId?: string };
   SEPPhrase: {
     mode: 'baseline' | 'attempt';
@@ -66,6 +68,11 @@ export default function OnboardingScreen() {
         name="DriverInfo"
         component={DriverInfoScreen}
         options={{ title: 'Driver Information' }}
+      />
+      <Stack.Screen
+        name="ProfilePhoto"
+        component={ProfilePhotoScreen}
+        options={{ title: 'Profile Photo' }}
       />
       <Stack.Screen
         name="SEPReaction"
