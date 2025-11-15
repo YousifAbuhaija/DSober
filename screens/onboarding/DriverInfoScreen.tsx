@@ -113,24 +113,11 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
 
       if (error) throw error;
 
-      // Refresh user context
-      await refreshUser();
+      // Navigate to SEP baseline first
+      navigation.navigate('SEPReaction', { mode: 'baseline' });
 
-      // Navigate to SEP baseline (tasks 6-8)
-      // For now, show a placeholder since SEP baseline isn't implemented yet
-      Alert.alert(
-        'Driver Info Saved',
-        'Your driver information has been saved. SEP baseline setup will be available in the next task.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // This will be replaced with navigation to SEP baseline in tasks 6-8
-              refreshUser();
-            },
-          },
-        ]
-      );
+      // Refresh user context after navigation (non-blocking)
+      refreshUser().catch(err => console.error('Error refreshing user:', err));
     } catch (error: any) {
       console.error('Error saving driver info:', error);
       Alert.alert('Error', error.message || 'Failed to save driver information. Please try again.');

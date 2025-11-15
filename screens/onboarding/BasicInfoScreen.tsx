@@ -107,11 +107,11 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
 
       if (error) throw error;
 
-      // Refresh user context
-      await refreshUser();
-
-      // Navigate to group join screen
+      // Navigate to group join screen first
       navigation.navigate('GroupJoin');
+      
+      // Refresh user context after navigation (non-blocking)
+      refreshUser().catch(err => console.error('Error refreshing user:', err));
     } catch (error: any) {
       console.error('Error saving basic info:', error);
       Alert.alert('Error', error.message || 'Failed to save information. Please try again.');

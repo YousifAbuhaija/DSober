@@ -4,8 +4,39 @@ import BasicInfoScreen from './onboarding/BasicInfoScreen';
 import GroupJoinScreen from './onboarding/GroupJoinScreen';
 import DDInterestScreen from './onboarding/DDInterestScreen';
 import DriverInfoScreen from './onboarding/DriverInfoScreen';
+import SEPReactionScreen from './onboarding/SEPReactionScreen';
+import SEPPhraseScreen from './onboarding/SEPPhraseScreen';
+import SEPSelfieScreen from './onboarding/SEPSelfieScreen';
+import OnboardingCompleteScreen from './onboarding/OnboardingCompleteScreen';
 
-const Stack = createStackNavigator();
+export type OnboardingStackParamList = {
+  BasicInfo: undefined;
+  GroupJoin: undefined;
+  DDInterest: undefined;
+  DriverInfo: undefined;
+  SEPReaction: { mode: 'baseline' | 'attempt'; eventId?: string };
+  SEPPhrase: {
+    mode: 'baseline' | 'attempt';
+    reactionAvgMs: number;
+    eventId?: string;
+  };
+  SEPSelfie: {
+    mode: 'baseline' | 'attempt';
+    reactionAvgMs: number;
+    phraseDurationSec: number;
+    audioUrl: string;
+    eventId?: string;
+  };
+  SEPResult: {
+    eventId?: string;
+    reactionAvgMs: number;
+    phraseDurationSec: number;
+    selfieUrl: string;
+  };
+  OnboardingComplete: undefined;
+};
+
+const Stack = createStackNavigator<OnboardingStackParamList>();
 
 export default function OnboardingScreen() {
   return (
@@ -34,6 +65,30 @@ export default function OnboardingScreen() {
         name="DriverInfo"
         component={DriverInfoScreen}
         options={{ title: 'Driver Information' }}
+      />
+      <Stack.Screen
+        name="SEPReaction"
+        component={SEPReactionScreen}
+        options={{ title: 'Reaction Time Test' }}
+      />
+      <Stack.Screen
+        name="SEPPhrase"
+        component={SEPPhraseScreen}
+        options={{ title: 'Phrase Recording' }}
+      />
+      <Stack.Screen
+        name="SEPSelfie"
+        component={SEPSelfieScreen}
+        options={{ title: 'Selfie Capture' }}
+      />
+      <Stack.Screen
+        name="OnboardingComplete"
+        component={OnboardingCompleteScreen}
+        options={{ 
+          title: 'Setup Complete',
+          headerLeft: () => null, // Prevent going back
+          gestureEnabled: false, // Disable swipe back gesture
+        }}
       />
     </Stack.Navigator>
   );

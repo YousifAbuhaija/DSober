@@ -86,10 +86,18 @@ export async function uploadAudio(
       reader.readAsArrayBuffer(blob);
     });
 
-    // Determine content type
-    const contentType = uri.match(/\.(m4a|mp3|wav)$/i)?.[0]
-      ? `audio/${uri.match(/\.(m4a|mp3|wav)$/i)![1].toLowerCase()}`
-      : 'audio/m4a';
+    // Determine content type - use supported MIME types
+    // Supabase supports audio/mpeg, audio/wav, audio/mp4, etc.
+    let contentType = 'audio/mp4'; // Default for m4a files
+    
+    const extension = uri.match(/\.(m4a|mp3|wav)$/i)?.[1]?.toLowerCase();
+    if (extension === 'mp3') {
+      contentType = 'audio/mpeg';
+    } else if (extension === 'wav') {
+      contentType = 'audio/wav';
+    } else if (extension === 'm4a') {
+      contentType = 'audio/mp4'; // m4a is actually MPEG-4 audio
+    }
 
     // Upload to Supabase storage
     const { data, error } = await supabase.storage

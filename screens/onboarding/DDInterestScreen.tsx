@@ -43,31 +43,17 @@ export default function DDInterestScreen({ navigation }: DDInterestScreenProps) 
 
       if (error) throw error;
 
-      // Refresh user context
-      await refreshUser();
-
-      // Navigate based on DD selection
+      // Navigate based on DD selection first
       if (isDD) {
         // If user wants to be a DD, go to driver info screen
         navigation.navigate('DriverInfo');
       } else {
-        // If not a DD, skip to SEP baseline (task 6-8)
-        // For now, we'll show a placeholder since SEP baseline isn't implemented yet
-        Alert.alert(
-          'Setup Complete',
-          'Your profile is ready! SEP baseline setup will be available in the next task.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // This will be replaced with navigation to SEP baseline in tasks 6-8
-                // For now, just refresh to go to main app
-                refreshUser();
-              },
-            },
-          ]
-        );
+        // If not a DD, go to SEP baseline
+        navigation.navigate('SEPReaction', { mode: 'baseline' });
       }
+
+      // Refresh user context after navigation (non-blocking)
+      refreshUser().catch(err => console.error('Error refreshing user:', err));
     } catch (error: any) {
       console.error('Error saving DD preference:', error);
       Alert.alert('Error', error.message || 'Failed to save preference. Please try again.');

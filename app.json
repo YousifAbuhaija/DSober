@@ -14,7 +14,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.DSober-temp"
+      "bundleIdentifier": "com.anonymous.DSober-temp",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to record audio for sobriety verification.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take photos for sobriety verification.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload your driver's license."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -26,6 +31,32 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow DSober to access your microphone for sobriety verification."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow DSober to access your camera for sobriety verification."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow DSober to access your photos to upload your driver's license."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow DSober to use your location to find nearby designated drivers."
+        }
+      ]
+    ]
   }
 }
