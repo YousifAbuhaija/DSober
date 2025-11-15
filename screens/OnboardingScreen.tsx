@@ -7,6 +7,7 @@ import DriverInfoScreen from './onboarding/DriverInfoScreen';
 import SEPReactionScreen from './onboarding/SEPReactionScreen';
 import SEPPhraseScreen from './onboarding/SEPPhraseScreen';
 import SEPSelfieScreen from './onboarding/SEPSelfieScreen';
+import SEPResultScreen from './onboarding/SEPResultScreen';
 import OnboardingCompleteScreen from './onboarding/OnboardingCompleteScreen';
 
 export type OnboardingStackParamList = {
@@ -80,6 +81,15 @@ export default function OnboardingScreen() {
         name="SEPSelfie"
         component={SEPSelfieScreen}
         options={{ title: 'Selfie Capture' }}
+      />
+      <Stack.Screen
+        name="SEPResult"
+        component={SEPResultScreen}
+        options={{ 
+          title: 'SEP Results',
+          headerLeft: () => null, // Prevent going back
+          gestureEnabled: false, // Disable swipe back gesture
+        }}
       />
       <Stack.Screen
         name="OnboardingComplete"

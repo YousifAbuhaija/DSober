@@ -7,17 +7,33 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Event, DDAssignment, DDRequest } from '../types/database.types';
+import { Event, DDAssignment, DDRequest, User } from '../types/database.types';
 
 type EventsStackParamList = {
   EventsList: undefined;
   EventDetail: { eventId: string };
   CreateEvent: undefined;
+  SEPReaction: { mode: 'baseline' | 'attempt'; eventId?: string };
+  SEPPhrase: {
+    mode: 'baseline' | 'attempt';
+    reactionAvgMs: number;
+    eventId?: string;
+  };
+  SEPSelfie: {
+    mode: 'baseline' | 'attempt';
+    reactionAvgMs: number;
+    phraseDurationSec: number;
+    audioUrl: string;
+    eventId?: string;
+  };
+  DDActiveSession: { eventId: string };
 };
 
 type EventDetailRouteProp = RouteProp<EventsStackParamList, 'EventDetail'>;
@@ -40,6 +56,11 @@ export default function EventDetailScreen() {
   const [userDDAssignment, setUserDDAssignment] = useState<DDAssignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [requestingDD, setRequestingDD] = useState(false);
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<User[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [assigningDD, setAssigningDD] = useState(false);
+  const [activeSession, setActiveSession] = useState<any>(null);
 
   useEffect(() => {
     fetchEventDetails();
@@ -122,6 +143,21 @@ export default function EventDetailScreen() {
         if (userAssignment) {
           setUserDDAssignment(userAssignment);
         }
+
+        // Check if current user has an active DD session
+        const { data: sessionData } = await supabase
+          .from('dd_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('event_id', eventId)
+          .eq('is_active', true)
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (sessionData) {
+          setActiveSession(sessionData);
+        }
       }
     } catch (error) {
       console.error('Error fetching event details:', error);
@@ -152,6 +188,131 @@ export default function EventDetailScreen() {
     } finally {
       setRequestingDD(false);
     }
+  };
+
+  const openAssignModal = async () => {
+    setAssignModalVisible(true);
+    setLoadingMembers(true);
+    try {
+      // Fetch all members in the user's group
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('group_id', user?.groupId);
+
+      if (userError) throw userError;
+
+      const mappedUsers: User[] = (userData || []).map((u) => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        birthday: new Date(u.birthday),
+        age: u.age,
+        gender: u.gender,
+        groupId: u.group_id,
+        role: u.role,
+        isDD: u.is_dd,
+        carMake: u.car_make,
+        carModel: u.car_model,
+        carPlate: u.car_plate,
+        licensePhotoUrl: u.license_photo_url,
+        createdAt: new Date(u.created_at),
+        updatedAt: new Date(u.updated_at),
+      }));
+
+      setGroupMembers(mappedUsers);
+    } catch (error) {
+      console.error('Error fetching group members:', error);
+      Alert.alert('Error', 'Failed to load group members');
+      setAssignModalVisible(false);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const assignDD = async (selectedUserId: string) => {
+    setAssigningDD(true);
+    try {
+      // Check if assignment already exists
+      const { data: existingAssignment } = await supabase
+        .from('dd_assignments')
+        .select('*')
+        .eq('event_id', eventId)
+        .eq('user_id', selectedUserId)
+        .single();
+
+      if (existingAssignment) {
+        // Update existing assignment
+        const { error } = await supabase
+          .from('dd_assignments')
+          .update({
+            status: 'assigned',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingAssignment.id);
+
+        if (error) throw error;
+      } else {
+        // Create new assignment
+        const { error } = await supabase.from('dd_assignments').insert({
+          event_id: eventId,
+          user_id: selectedUserId,
+          status: 'assigned',
+        });
+
+        if (error) throw error;
+      }
+
+      Alert.alert('Success', 'DD assigned successfully');
+      setAssignModalVisible(false);
+      fetchEventDetails();
+    } catch (error) {
+      console.error('Error assigning DD:', error);
+      Alert.alert('Error', 'Failed to assign DD');
+    } finally {
+      setAssigningDD(false);
+    }
+  };
+
+  const startSEPVerification = () => {
+    // Navigate to SEP Reaction screen in 'attempt' mode with eventId
+    navigation.navigate('SEPReaction', {
+      mode: 'attempt',
+      eventId: eventId,
+    });
+  };
+
+  const goToActiveSession = () => {
+    navigation.navigate('DDActiveSession', { eventId });
+  };
+
+  const renderMemberItem = ({ item }: { item: User }) => {
+    const isAlreadyAssigned = ddAssignments.some(
+      (assignment) => assignment.userId === item.id && assignment.status === 'assigned'
+    );
+
+    return (
+      <TouchableOpacity
+        style={[styles.memberItem, isAlreadyAssigned && styles.memberItemAssigned]}
+        onPress={() => assignDD(item.id)}
+        disabled={assigningDD}
+      >
+        <View style={styles.memberInfo}>
+          <Text style={styles.memberName}>{item.name}</Text>
+          <Text style={styles.memberEmail}>{item.email}</Text>
+          {item.isDD && (
+            <View style={styles.ddBadge}>
+              <Text style={styles.ddBadgeText}>DD</Text>
+            </View>
+          )}
+        </View>
+        {isAlreadyAssigned && (
+          <View style={styles.assignedIndicator}>
+            <Text style={styles.assignedText}>✓ Assigned</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
   };
 
   const formatDateTime = (date: Date) => {
@@ -189,6 +350,23 @@ export default function EventDetailScreen() {
       );
     }
 
+    // User has an active session
+    if (activeSession) {
+      return (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your DD Status</Text>
+          <View style={[styles.statusBox, { backgroundColor: '#E8F5E9' }]}>
+            <Text style={[styles.statusBoxText, { color: '#2E7D32' }]}>
+              ✓ You have an active DD session
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.primaryButton} onPress={goToActiveSession}>
+            <Text style={styles.primaryButtonText}>Go to Active Session</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     // User has an assignment
     if (userDDAssignment) {
       if (userDDAssignment.status === 'assigned') {
@@ -200,7 +378,7 @@ export default function EventDetailScreen() {
                 ✓ You are assigned as a DD for this event
               </Text>
             </View>
-            <TouchableOpacity style={styles.primaryButton}>
+            <TouchableOpacity style={styles.primaryButton} onPress={startSEPVerification}>
               <Text style={styles.primaryButtonText}>Start SEP Verification</Text>
             </TouchableOpacity>
           </View>
@@ -351,11 +529,51 @@ export default function EventDetailScreen() {
       {user?.role === 'admin' && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Admin Actions</Text>
-          <TouchableOpacity style={styles.secondaryButton}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={openAssignModal}>
             <Text style={styles.secondaryButtonText}>Assign DD</Text>
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Assign DD Modal */}
+      <Modal
+        visible={assignModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setAssignModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Assign DD</Text>
+              <TouchableOpacity
+                onPress={() => setAssignModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loadingMembers ? (
+              <View style={styles.modalLoadingContainer}>
+                <ActivityIndicator size="large" color="#007AFF" />
+              </View>
+            ) : (
+              <FlatList
+                data={groupMembers}
+                keyExtractor={(item) => item.id}
+                renderItem={renderMemberItem}
+                contentContainerStyle={styles.membersList}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No members found</Text>
+                  </View>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -521,5 +739,107 @@ const styles = StyleSheet.create({
   ddStatusText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: '#8E8E93',
+  },
+  modalLoadingContainer: {
+    padding: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  membersList: {
+    padding: 16,
+  },
+  memberItem: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  memberItemAssigned: {
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 4,
+  },
+  memberEmail: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  ddBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  ddBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  assignedIndicator: {
+    marginLeft: 12,
+  },
+  assignedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4CAF50',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#8E8E93',
   },
 });

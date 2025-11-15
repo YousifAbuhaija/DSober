@@ -9,6 +9,11 @@ import CreateEventScreen from './CreateEventScreen';
 import DDsListScreen from './DDsListScreen';
 import AdminDashboardScreen from './AdminDashboardScreen';
 import ProfileScreen from './ProfileScreen';
+import SEPReactionScreen from './onboarding/SEPReactionScreen';
+import SEPPhraseScreen from './onboarding/SEPPhraseScreen';
+import SEPSelfieScreen from './onboarding/SEPSelfieScreen';
+import SEPResultScreen from './onboarding/SEPResultScreen';
+import DDActiveSessionScreen from './DDActiveSessionScreen';
 
 const Tab = createBottomTabNavigator();
 const EventsStack = createStackNavigator();
@@ -34,6 +39,35 @@ function EventsStackNavigator() {
         name="CreateEvent" 
         component={CreateEventScreen}
         options={{ title: 'Create Event' }}
+      />
+      <EventsStack.Screen 
+        name="SEPReaction" 
+        component={SEPReactionScreen}
+        options={{ title: 'Reaction Time Test' }}
+      />
+      <EventsStack.Screen 
+        name="SEPPhrase" 
+        component={SEPPhraseScreen}
+        options={{ title: 'Phrase Recording' }}
+      />
+      <EventsStack.Screen 
+        name="SEPSelfie" 
+        component={SEPSelfieScreen}
+        options={{ title: 'Selfie Capture' }}
+      />
+      <EventsStack.Screen 
+        name="SEPResult" 
+        component={SEPResultScreen}
+        options={{ 
+          title: 'SEP Results',
+          headerLeft: () => null,
+          gestureEnabled: false,
+        }}
+      />
+      <EventsStack.Screen 
+        name="DDActiveSession" 
+        component={DDActiveSessionScreen}
+        options={{ title: 'Active DD Session' }}
       />
     </EventsStack.Navigator>
   );

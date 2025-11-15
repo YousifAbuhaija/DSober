@@ -15,16 +15,22 @@ import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
 } from 'expo-audio';
-import { StackScreenProps } from '@react-navigation/stack';
-import { OnboardingStackParamList } from '../OnboardingScreen';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { uploadAudio } from '../../utils/storage';
 import { supabase } from '../../lib/supabase';
 
-type SEPPhraseScreenProps = StackScreenProps<OnboardingStackParamList, 'SEPPhrase'>;
+type SEPPhraseRouteParams = {
+  mode: 'baseline' | 'attempt';
+  reactionAvgMs: number;
+  eventId?: string;
+};
 
 const FIXED_PHRASE = "I am the designated driver for tonight's event";
 
-export default function SEPPhraseScreen({ navigation, route }: SEPPhraseScreenProps) {
+export default function SEPPhraseScreen() {
+  const navigation = useNavigation<StackNavigationProp<any>>();
+  const route = useRoute<RouteProp<{ params: SEPPhraseRouteParams }, 'params'>>();
   const { mode, reactionAvgMs, eventId } = route.params;
   
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -166,6 +172,14 @@ export default function SEPPhraseScreen({ navigation, route }: SEPPhraseScreenPr
       const audioUrl = await uploadAudio(audioUri, 'sep-audio', audioPath);
 
       // Navigate to next screen with all data
+      console.log('SEPPhraseScreen navigating with:', {
+        mode,
+        eventId,
+        reactionAvgMs,
+        phraseDurationSec,
+        audioUrl,
+      });
+      
       if (mode === 'baseline') {
         navigation.navigate('SEPSelfie', {
           mode: 'baseline',

@@ -7,22 +7,21 @@ import {
   Animated,
   Alert,
 } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 
-interface SEPReactionScreenProps {
-  navigation: any;
-  route?: {
-    params?: {
-      mode?: 'baseline' | 'attempt';
-      eventId?: string;
-    };
-  };
-}
+type SEPReactionRouteParams = {
+  mode?: 'baseline' | 'attempt';
+  eventId?: string;
+};
 
 type TrialState = 'waiting' | 'ready' | 'go' | 'tapped' | 'early';
 
-export default function SEPReactionScreen({ navigation, route }: SEPReactionScreenProps) {
-  const mode = route?.params?.mode || 'baseline';
-  const eventId = route?.params?.eventId;
+export default function SEPReactionScreen() {
+  const navigation = useNavigation<StackNavigationProp<any>>();
+  const route = useRoute<RouteProp<{ params: SEPReactionRouteParams }, 'params'>>();
+  const mode = route.params?.mode || 'baseline';
+  const eventId = route.params?.eventId;
   
   const TOTAL_TRIALS = 5;
   const MIN_DELAY_MS = 1000;
@@ -118,6 +117,14 @@ export default function SEPReactionScreen({ navigation, route }: SEPReactionScre
     // Calculate average reaction time
     const average = times.reduce((sum, time) => sum + time, 0) / times.length;
     const roundedAverage = Math.round(average);
+    
+    console.log('SEPReactionScreen finishTest:', {
+      times,
+      average,
+      roundedAverage,
+      mode,
+      eventId,
+    });
     
     // Navigate to next screen with reaction time data
     if (mode === 'baseline') {

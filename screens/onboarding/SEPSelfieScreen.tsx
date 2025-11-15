@@ -9,14 +9,22 @@ import {
   Image,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { StackScreenProps } from '@react-navigation/stack';
-import { OnboardingStackParamList } from '../OnboardingScreen';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { uploadImage } from '../../utils/storage';
 import { supabase } from '../../lib/supabase';
 
-type SEPSelfieScreenProps = StackScreenProps<OnboardingStackParamList, 'SEPSelfie'>;
+type SEPSelfieRouteParams = {
+  mode: 'baseline' | 'attempt';
+  reactionAvgMs: number;
+  phraseDurationSec: number;
+  audioUrl: string;
+  eventId?: string;
+};
 
-export default function SEPSelfieScreen({ navigation, route }: SEPSelfieScreenProps) {
+export default function SEPSelfieScreen() {
+  const navigation = useNavigation<StackNavigationProp<any>>();
+  const route = useRoute<RouteProp<{ params: SEPSelfieRouteParams }, 'params'>>();
   const { mode, reactionAvgMs, phraseDurationSec, audioUrl, eventId } = route.params;
   
   const [permission, requestPermission] = useCameraPermissions();
@@ -94,7 +102,17 @@ export default function SEPSelfieScreen({ navigation, route }: SEPSelfieScreenPr
         navigation.navigate('OnboardingComplete');
       } else {
         // For attempt mode, navigate to SEP result evaluation
-        // This will be implemented in a future task
+        if (!eventId) {
+          throw new Error('Event ID is required for SEP attempt');
+        }
+        
+        console.log('SEPSelfieScreen navigating to SEPResult with:', {
+          eventId,
+          reactionAvgMs,
+          phraseDurationSec,
+          selfieUrl,
+        });
+        
         navigation.navigate('SEPResult', {
           eventId,
           reactionAvgMs,
