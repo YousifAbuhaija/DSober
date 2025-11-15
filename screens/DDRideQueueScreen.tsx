@@ -373,12 +373,22 @@ export default function DDRideQueueScreen() {
         <Text style={styles.pickupText}>{item.pickupLocationText}</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.pickupButton}
-        onPress={() => handleMarkPickedUp(item.id, item.riderName)}
-      >
-        <Text style={styles.pickupButtonText}>Mark as Picked Up</Text>
-      </TouchableOpacity>
+      <View style={styles.actionButtons}>
+        {item.riderPhoneNumber && (
+          <TouchableOpacity
+            style={styles.callButton}
+            onPress={() => handleCallRider(item.riderName, item.riderPhoneNumber)}
+          >
+            <Text style={styles.callButtonText}>📞 Call</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[styles.pickupButton, item.riderPhoneNumber && styles.pickupButtonFlex]}
+          onPress={() => handleMarkPickedUp(item.id, item.riderName)}
+        >
+          <Text style={styles.pickupButtonText}>Mark as Picked Up</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -412,12 +422,22 @@ export default function DDRideQueueScreen() {
           <Text style={styles.pickupText}>{activeRide.pickupLocationText}</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.completeButton}
-          onPress={() => handleMarkCompleted(activeRide.id, activeRide.riderName)}
-        >
-          <Text style={styles.completeButtonText}>Mark as Dropped Off</Text>
-        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          {activeRide.riderPhoneNumber && (
+            <TouchableOpacity
+              style={styles.callButton}
+              onPress={() => handleCallRider(activeRide.riderName, activeRide.riderPhoneNumber)}
+            >
+              <Text style={styles.callButtonText}>📞 Call</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.completeButton, activeRide.riderPhoneNumber && styles.completeButtonFlex]}
+            onPress={() => handleMarkCompleted(activeRide.id, activeRide.riderName)}
+          >
+            <Text style={styles.completeButtonText}>Mark as Dropped Off</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -602,11 +622,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000',
   },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  callButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  callButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
   acceptButton: {
     backgroundColor: '#34C759',
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
+  },
+  acceptButtonFlex: {
+    flex: 1,
   },
   acceptButtonText: {
     fontSize: 16,
@@ -704,6 +743,9 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
   },
+  pickupButtonFlex: {
+    flex: 1,
+  },
   pickupButtonText: {
     fontSize: 16,
     fontWeight: '600',
@@ -714,6 +756,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
+  },
+  completeButtonFlex: {
+    flex: 1,
   },
   completeButtonText: {
     fontSize: 16,
