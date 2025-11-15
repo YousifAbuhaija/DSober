@@ -331,6 +331,10 @@ export default function DDDetailScreen() {
               source={{ uri: ddUser.profilePhotoUrl }}
               style={styles.photo}
               resizeMode="cover"
+              onError={(error) => {
+                console.error('Error loading DD detail photo:', error.nativeEvent.error);
+                console.log('Failed URL:', ddUser.profilePhotoUrl);
+              }}
             />
           ) : (
             <View style={styles.photo}>

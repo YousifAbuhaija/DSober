@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -161,11 +162,22 @@ export default function ProfileScreen() {
       {/* User Info Section */}
       <View style={styles.section}>
         <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user.name?.charAt(0).toUpperCase() || '?'}
-            </Text>
-          </View>
+          {user.profilePhotoUrl ? (
+            <Image
+              source={{ uri: user.profilePhotoUrl }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+              onError={(error) => {
+                console.error('Error loading profile photo:', error.nativeEvent.error);
+              }}
+            />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {user.name?.charAt(0).toUpperCase() || '?'}
+              </Text>
+            </View>
+          )}
         </View>
         <Text style={styles.userName}>{user.name}</Text>
         <Text style={styles.userEmail}>{user.email}</Text>
@@ -390,6 +402,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E5E5EA',
+    borderWidth: 2,
+    borderColor: '#007AFF',
   },
   avatarText: {
     fontSize: 36,

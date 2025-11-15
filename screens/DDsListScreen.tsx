@@ -256,6 +256,10 @@ export default function DDsListScreen() {
               source={{ uri: item.profilePhotoUrl }}
               style={styles.avatar}
               resizeMode="cover"
+              onError={(error) => {
+                console.error('Error loading DD profile photo:', error.nativeEvent.error);
+                console.log('Failed URL:', item.profilePhotoUrl);
+              }}
             />
           ) : (
             <View style={styles.avatar}>

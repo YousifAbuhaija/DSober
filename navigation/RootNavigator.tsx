@@ -43,7 +43,7 @@ export default function RootNavigator() {
     };
 
     checkSEPBaseline();
-  }, [user?.id]); // Only re-run when user ID changes, not when user object updates
+  }, [user?.id, user?.name, user?.groupId, user?.carMake]); // Re-check when user data changes
 
   // Authenticated - check if profile is complete
   // Profile is complete when:
