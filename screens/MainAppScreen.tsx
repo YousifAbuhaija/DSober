@@ -9,6 +9,7 @@ import CreateEventScreen from './CreateEventScreen';
 import DDsListScreen from './DDsListScreen';
 import DDDetailScreen from './DDDetailScreen';
 import AdminDashboardScreen from './AdminDashboardScreen';
+import AdminRideLogScreen from './AdminRideLogScreen';
 import ProfileScreen from './ProfileScreen';
 import SEPReactionScreen from './onboarding/SEPReactionScreen';
 import SEPPhraseScreen from './onboarding/SEPPhraseScreen';
@@ -147,6 +148,11 @@ function AdminStackNavigator() {
         name="AdminDashboard" 
         component={AdminDashboardScreen}
         options={{ title: 'Admin' }}
+      />
+      <AdminStack.Screen 
+        name="AdminRideLog" 
+        component={AdminRideLogScreen}
+        options={{ title: 'Ride Activity Log' }}
       />
     </AdminStack.Navigator>
   );

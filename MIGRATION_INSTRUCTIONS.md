@@ -44,6 +44,12 @@ CREATE INDEX IF NOT EXISTS idx_users_dd_status ON users(dd_status);
 
 ### 3. Add ride_requests table for ride coordination feature
 ```sql
+-- IMPORTANT: If you already ran migration 013 with the old constraint, run this first:
+ALTER TABLE ride_requests DROP CONSTRAINT IF EXISTS unique_active_request_per_event;
+```
+
+Then run:
+```sql
 -- Add ride_requests table for ride coordination feature
 -- This migration creates the ride_requests table with RLS policies
 

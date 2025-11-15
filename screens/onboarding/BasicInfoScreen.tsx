@@ -21,6 +21,7 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
   const [name, setName] = useState('');
   const [birthdayText, setBirthdayText] = useState('');
   const [gender, setGender] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [selectedYear, setSelectedYear] = useState(2000);
@@ -57,6 +58,33 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
     return new Date(year, month, day);
   };
 
+  const validatePhoneNumber = (phone: string): boolean => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Check if it's a valid US phone number (10 digits)
+    // or international format (11+ digits starting with 1)
+    return digitsOnly.length === 10 || (digitsOnly.length >= 11 && digitsOnly[0] === '1');
+  };
+
+  const formatPhoneNumber = (phone: string): string => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Format as (XXX) XXX-XXXX for 10 digits
+    if (digitsOnly.length === 10) {
+      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+    }
+    
+    // Format as +1 (XXX) XXX-XXXX for 11 digits starting with 1
+    if (digitsOnly.length === 11 && digitsOnly[0] === '1') {
+      return `+1 (${digitsOnly.slice(1, 4)}) ${digitsOnly.slice(4, 7)}-${digitsOnly.slice(7)}`;
+    }
+    
+    // Return as-is for other formats
+    return phone;
+  };
+
   const handleNext = async () => {
     // Validate required fields
     if (!name.trim()) {
@@ -80,6 +108,19 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
       return;
     }
 
+    if (!phoneNumber.trim()) {
+      Alert.alert('Error', 'Please enter your phone number');
+      return;
+    }
+
+    if (!validatePhoneNumber(phoneNumber)) {
+      Alert.alert(
+        'Invalid Phone Number',
+        'Please enter a valid phone number (10 digits for US numbers)'
+      );
+      return;
+    }
+
     const age = calculateAge(birthday);
     if (age < 18) {
       Alert.alert('Error', 'You must be at least 18 years old to use this app');
@@ -93,6 +134,9 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
         throw new Error('No user session found');
       }
 
+      // Format phone number before saving
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+
       // Update user profile in database
       const { error } = await supabase
         .from('users')
@@ -101,6 +145,7 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
           birthday: birthday.toISOString(),
           age,
           gender,
+          phone_number: formattedPhone,
           updated_at: new Date().toISOString(),
         })
         .eq('id', session.user.id);
@@ -196,6 +241,23 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        {/* Phone Number Input */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Phone Number *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="(555) 123-4567"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            keyboardType="phone-pad"
+            autoCorrect={false}
+            maxLength={20}
+          />
+          <Text style={styles.hint}>
+            Your phone number allows DDs and riders to coordinate pickups
+          </Text>
         </View>
 
         {/* Next Button */}

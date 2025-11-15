@@ -77,9 +77,21 @@ export default function RideStatusScreen() {
       }
 
       if (!requestData) {
-        // No active request, go back
-        Alert.alert('No Active Request', 'You don\'t have an active ride request.');
-        navigation.goBack();
+        // No active request, go back if possible
+        Alert.alert(
+          'No Active Request', 
+          'You don\'t have an active ride request.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                }
+              }
+            }
+          ]
+        );
         return;
       }
 
@@ -168,8 +180,22 @@ export default function RideStatusScreen() {
 
               if (error) throw error;
 
-              Alert.alert('Request Cancelled', 'Your ride request has been cancelled.');
-              navigation.goBack();
+              Alert.alert(
+                'Request Cancelled', 
+                'Your ride request has been cancelled.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      // Try to go back, but if there's no screen to go back to,
+                      // the navigation will handle it gracefully
+                      if (navigation.canGoBack()) {
+                        navigation.goBack();
+                      }
+                    }
+                  }
+                ]
+              );
             } catch (err) {
               console.error('Error cancelling request:', err);
               Alert.alert('Error', 'Failed to cancel request. Please try again.');

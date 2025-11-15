@@ -17,9 +17,7 @@ CREATE TABLE IF NOT EXISTS ride_requests (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   accepted_at TIMESTAMPTZ,
   picked_up_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  -- Ensure a rider can only have one active request per event
-  CONSTRAINT unique_active_request_per_event UNIQUE (rider_user_id, event_id, status)
+  completed_at TIMESTAMPTZ
 );
 
 -- ============================================================================
@@ -31,6 +29,12 @@ CREATE INDEX IF NOT EXISTS idx_ride_requests_rider_user_id ON ride_requests(ride
 CREATE INDEX IF NOT EXISTS idx_ride_requests_event_id ON ride_requests(event_id);
 CREATE INDEX IF NOT EXISTS idx_ride_requests_status ON ride_requests(status);
 CREATE INDEX IF NOT EXISTS idx_ride_requests_created_at ON ride_requests(created_at);
+
+-- Partial unique index: only one active request per rider per event
+-- Allows multiple cancelled/completed requests
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_ride_request 
+ON ride_requests (rider_user_id, event_id) 
+WHERE status IN ('pending', 'accepted', 'picked_up');
 
 -- ============================================================================
 -- RLS POLICIES

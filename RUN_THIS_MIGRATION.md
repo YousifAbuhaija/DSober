@@ -18,6 +18,14 @@ You need to run a SQL migration in your Supabase dashboard.
 - Click **"New query"**
 
 ### 2. Copy the SQL
+
+**IMPORTANT:** If you already ran the migration before and are getting constraint errors, run this first:
+```sql
+ALTER TABLE ride_requests DROP CONSTRAINT IF EXISTS unique_active_request_per_event;
+```
+
+Then run the main migration:
+
 Open this file: `supabase/migrations/013_add_ride_requests.sql`
 
 Or copy this SQL directly:
@@ -39,12 +47,18 @@ CREATE TABLE IF NOT EXISTS ride_requests (
   completed_at TIMESTAMPTZ
 );
 
--- Create indexes
+-- Create indexes (including partial unique index for active requests)
 CREATE INDEX IF NOT EXISTS idx_ride_requests_dd_user_id ON ride_requests(dd_user_id);
 CREATE INDEX IF NOT EXISTS idx_ride_requests_rider_user_id ON ride_requests(rider_user_id);
 CREATE INDEX IF NOT EXISTS idx_ride_requests_event_id ON ride_requests(event_id);
 CREATE INDEX IF NOT EXISTS idx_ride_requests_status ON ride_requests(status);
 CREATE INDEX IF NOT EXISTS idx_ride_requests_created_at ON ride_requests(created_at);
+
+-- Partial unique index: only one active request per rider per event
+-- Allows multiple cancelled/completed requests
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_ride_request 
+ON ride_requests (rider_user_id, event_id) 
+WHERE status IN ('pending', 'accepted', 'picked_up');
 
 -- Enable RLS
 ALTER TABLE ride_requests ENABLE ROW LEVEL SECURITY;

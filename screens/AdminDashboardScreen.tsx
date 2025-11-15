@@ -9,7 +9,8 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { DDRequest, Event, User, AdminAlert, SEPAttempt, SEPBaseline } from '../types/database.types';
@@ -26,8 +27,16 @@ interface AdminAlertWithDetails extends AdminAlert {
   sepBaseline?: SEPBaseline;
 }
 
+type AdminStackParamList = {
+  AdminDashboard: undefined;
+  AdminRideLog: undefined;
+};
+
+type NavigationProp = StackNavigationProp<AdminStackParamList, 'AdminDashboard'>;
+
 export default function AdminDashboardScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<NavigationProp>();
   const [pendingRequests, setPendingRequests] = useState<DDRequestWithDetails[]>([]);
   const [sepAlerts, setSepAlerts] = useState<AdminAlertWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -488,7 +497,8 @@ export default function AdminDashboardScreen() {
   };
 
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
+    <View style={styles.emptyCard}>
+      <Text style={styles.emptyIcon}>📋</Text>
       <Text style={styles.emptyText}>No pending DD requests</Text>
       <Text style={styles.emptySubtext}>Requests will appear here when members apply to be DDs</Text>
     </View>
@@ -578,7 +588,8 @@ export default function AdminDashboardScreen() {
   };
 
   const renderAlertsEmptyState = () => (
-    <View style={styles.emptyContainer}>
+    <View style={styles.emptyCard}>
+      <Text style={styles.emptyIcon}>✅</Text>
       <Text style={styles.emptyText}>No SEP alerts</Text>
       <Text style={styles.emptySubtext}>Alerts will appear here when DDs fail verification</Text>
     </View>
@@ -606,13 +617,32 @@ export default function AdminDashboardScreen() {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={pendingRequests.length === 0 ? styles.emptyScrollContent : styles.scrollContent}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pending DD Requests</Text>
+        {/* Quick Actions Section */}
+        <View style={styles.quickActionsSection}>
+          <TouchableOpacity
+            style={styles.quickActionButton}
+            onPress={() => navigation.navigate('AdminRideLog')}
+          >
+            <Text style={styles.quickActionIcon}>📊</Text>
+            <Text style={styles.quickActionText}>View Ride Activity Log</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Pending DD Requests Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionHeaderTitle}>Pending DD Requests</Text>
+          {pendingRequests.length > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{pendingRequests.length}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.sectionContent}>
           {pendingRequests.length === 0 ? (
             renderEmptyState()
           ) : (
@@ -620,8 +650,16 @@ export default function AdminDashboardScreen() {
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SEP Alerts</Text>
+        {/* SEP Alerts Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionHeaderTitle}>SEP Alerts</Text>
+          {sepAlerts.length > 0 && (
+            <View style={[styles.badge, styles.badgeWarning]}>
+              <Text style={styles.badgeText}>{sepAlerts.length}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.sectionContent}>
           {sepAlerts.length === 0 ? (
             renderAlertsEmptyState()
           ) : (
@@ -645,19 +683,68 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
   },
   scrollContent: {
+    paddingBottom: 16,
+  },
+  quickActionsSection: {
     padding: 16,
+    backgroundColor: '#F2F2F7',
   },
-  emptyScrollContent: {
-    flexGrow: 1,
+  quickActionButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  section: {
-    marginBottom: 24,
+  quickActionIcon: {
+    fontSize: 24,
+    marginRight: 12,
   },
-  sectionTitle: {
+  quickActionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  sectionHeader: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionHeaderTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#000',
-    marginBottom: 12,
+  },
+  badge: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeWarning: {
+    backgroundColor: '#FF9500',
+  },
+  badgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  sectionContent: {
+    padding: 16,
   },
   requestCard: {
     backgroundColor: '#fff',
@@ -733,17 +820,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
   },
+  emptyCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
   emptyText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#8E8E93',
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
     color: '#8E8E93',
     textAlign: 'center',
-    paddingHorizontal: 32,
+    lineHeight: 20,
   },
   alertCard: {
     backgroundColor: '#fff',

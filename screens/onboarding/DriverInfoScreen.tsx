@@ -20,7 +20,7 @@ interface DriverInfoScreenProps {
 }
 
 export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) {
-  const { session, refreshUser } = useAuth();
+  const { session, refreshUser, user } = useAuth();
   const [carMake, setCarMake] = useState('');
   const [carModel, setCarModel] = useState('');
   const [carPlate, setCarPlate] = useState('');
@@ -28,6 +28,13 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
   const [licensePhotoUri, setLicensePhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Pre-fill phone number if already provided
+  React.useEffect(() => {
+    if (user?.phoneNumber) {
+      setPhoneNumber(user.phoneNumber);
+    }
+  }, [user]);
 
   const validatePhoneNumber = (phone: string): boolean => {
     // Remove all non-digit characters
@@ -106,12 +113,8 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
       return;
     }
 
-    if (!phoneNumber.trim()) {
-      Alert.alert('Error', 'Please enter your phone number');
-      return;
-    }
-
-    if (!validatePhoneNumber(phoneNumber)) {
+    // Phone number validation (optional here since it's already collected in BasicInfo)
+    if (phoneNumber.trim() && !validatePhoneNumber(phoneNumber)) {
       Alert.alert(
         'Invalid Phone Number',
         'Please enter a valid phone number (10 digits for US numbers)'
@@ -140,20 +143,26 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
       );
       setUploadingPhoto(false);
 
-      // Format phone number before saving
-      const formattedPhone = formatPhoneNumber(phoneNumber);
+      // Format phone number before saving (if provided)
+      const formattedPhone = phoneNumber.trim() ? formatPhoneNumber(phoneNumber) : user?.phoneNumber;
 
       // Update user profile with driver information
+      const updateData: any = {
+        car_make: carMake.trim(),
+        car_model: carModel.trim(),
+        car_plate: carPlate.trim().toUpperCase(),
+        license_photo_url: licensePhotoUrl,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Only update phone number if it was changed
+      if (formattedPhone) {
+        updateData.phone_number = formattedPhone;
+      }
+
       const { error } = await supabase
         .from('users')
-        .update({
-          car_make: carMake.trim(),
-          car_model: carModel.trim(),
-          car_plate: carPlate.trim().toUpperCase(),
-          phone_number: formattedPhone,
-          license_photo_url: licensePhotoUrl,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', session.user.id);
 
       if (error) throw error;
@@ -222,9 +231,9 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
           />
         </View>
 
-        {/* Phone Number Input */}
+        {/* Phone Number Input (optional - can update if needed) */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phone Number *</Text>
+          <Text style={styles.label}>Phone Number</Text>
           <TextInput
             style={styles.input}
             placeholder="e.g., (555) 123-4567"
@@ -235,7 +244,7 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
             maxLength={20}
           />
           <Text style={styles.hint}>
-            Your phone number will be visible to riders who need a DD
+            Update your phone number if needed (already provided during signup)
           </Text>
         </View>
 

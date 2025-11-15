@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../lib/supabase';
 import { User, SEPBaseline, RideRequest } from '../types/database.types';
@@ -45,10 +45,30 @@ export default function DDDetailScreen() {
 
   useEffect(() => {
     fetchDDDetails();
-    if (eventId && user) {
-      checkExistingRequest();
-    }
-  }, [ddUserId, eventId, user]);
+  }, [ddUserId]);
+
+  // Check for existing request when screen comes into focus or when navigation state changes
+  useFocusEffect(
+    useCallback(() => {
+      if (eventId && user) {
+        checkExistingRequest();
+      }
+    }, [eventId, user])
+  );
+
+  // Listen for navigation state changes (when coming back from RideStatus)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('state', () => {
+      if (eventId && user) {
+        // Small delay to ensure the database has been updated
+        setTimeout(() => {
+          checkExistingRequest();
+        }, 100);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, eventId, user]);
 
   const fetchDDDetails = async () => {
     try {

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Linking,
 } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -24,6 +25,7 @@ type DDRideQueueRouteProp = RouteProp<EventsStackParamList, 'DDRideQueue'>;
 
 interface RideRequestWithRider extends RideRequest {
   riderName: string;
+  riderPhoneNumber?: string;
   distance?: number;
 }
 
@@ -86,11 +88,11 @@ export default function DDRideQueueScreen() {
         return;
       }
 
-      // Fetch rider details
+      // Fetch rider details including phone numbers
       const riderIds = requestsData.map((r) => r.rider_user_id);
       const { data: ridersData, error: ridersError } = await supabase
         .from('users')
-        .select('id, name')
+        .select('id, name, phone_number')
         .in('id', riderIds);
 
       if (ridersError) throw ridersError;
@@ -124,6 +126,7 @@ export default function DDRideQueueScreen() {
           pickedUpAt: req.picked_up_at ? new Date(req.picked_up_at) : undefined,
           completedAt: req.completed_at ? new Date(req.completed_at) : undefined,
           riderName: rider?.name || 'Unknown',
+          riderPhoneNumber: rider?.phone_number,
           distance,
         };
       });
@@ -246,6 +249,37 @@ export default function DDRideQueueScreen() {
     );
   };
 
+  const handleCallRider = async (riderName: string, phoneNumber?: string) => {
+    if (!phoneNumber) {
+      Alert.alert(
+        'Phone Number Not Available',
+        `${riderName} has not provided a phone number.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    const digitsOnly = phoneNumber.replace(/\D/g, '');
+    const phoneUrl = `tel:${digitsOnly}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(phoneUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(phoneUrl);
+      } else {
+        Alert.alert(
+          'Cannot Make Call',
+          'Your device does not support phone calls.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error opening phone dialer:', error);
+      Alert.alert('Error', 'Failed to open phone dialer. Please try again.');
+    }
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchRideRequests();
@@ -289,12 +323,22 @@ export default function DDRideQueueScreen() {
         <Text style={styles.pickupText}>{item.pickupLocationText}</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.acceptButton}
-        onPress={() => handleAcceptRequest(item.id, item.riderName)}
-      >
-        <Text style={styles.acceptButtonText}>Accept Ride</Text>
-      </TouchableOpacity>
+      <View style={styles.actionButtons}>
+        {item.riderPhoneNumber && (
+          <TouchableOpacity
+            style={styles.callButton}
+            onPress={() => handleCallRider(item.riderName, item.riderPhoneNumber)}
+          >
+            <Text style={styles.callButtonText}>📞 Call</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[styles.acceptButton, item.riderPhoneNumber && styles.acceptButtonFlex]}
+          onPress={() => handleAcceptRequest(item.id, item.riderName)}
+        >
+          <Text style={styles.acceptButtonText}>Accept Ride</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
