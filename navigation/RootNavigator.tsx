@@ -33,7 +33,13 @@ export default function RootNavigator() {
   }
 
   // Authenticated - check if profile is complete
-  const isProfileComplete = user && user.name && user.groupId;
+  // Profile is complete when:
+  // 1. Basic info is filled (name, groupId)
+  // 2. If user is a DD (isDD = true), they must have provided driver info
+  const hasBasicInfo = user && user.name && user.groupId;
+  const hasCompletedDDFlow = !user?.isDD || (user.carMake && user.carModel && user.carPlate);
+  
+  const isProfileComplete = hasBasicInfo && hasCompletedDDFlow;
 
   return (
     <NavigationContainer>

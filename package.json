@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "verify-db": "ts-node scripts/verify-database.ts"
+    "verify-db": "ts-node scripts/verify-database.ts",
+    "reset-onboarding": "ts-node scripts/reset-onboarding.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
