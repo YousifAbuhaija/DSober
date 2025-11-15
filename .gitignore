@@ -25,3 +25,6 @@ web-build/
 # IDE
 .vscode/
 .idea/
+
+# Markdown
+*.md
