@@ -13,6 +13,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { uploadImage } from '../../utils/storage';
 import { supabase } from '../../lib/supabase';
+import { theme } from '../../theme/colors';
 
 type SEPSelfieRouteParams = {
   mode: 'baseline' | 'attempt';
@@ -259,36 +260,36 @@ export default function SEPSelfieScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#000', // Preserved camera UI background
   },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   permissionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
     textAlign: 'center',
   },
   permissionText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: 24,
   },
   permissionButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     paddingHorizontal: 32,
   },
   permissionButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -296,23 +297,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: 32,
   },
   instructionsBox: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 20,
     marginBottom: 32,
@@ -320,22 +321,22 @@ const styles = StyleSheet.create({
   instructionsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   instructionsText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 24,
   },
   startButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
   startButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -358,7 +359,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 40,
     height: 40,
-    borderColor: '#fff',
+    borderColor: '#fff', // Preserved camera UI functional color
     borderWidth: 3,
   },
   topLeft: {
@@ -387,7 +388,7 @@ const styles = StyleSheet.create({
   },
   cameraInstruction: {
     fontSize: 18,
-    color: '#fff',
+    color: '#fff', // Preserved camera UI functional color
     textAlign: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     paddingVertical: 12,
@@ -403,27 +404,27 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)', // Preserved camera UI functional color
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
-    borderColor: '#fff',
+    borderColor: '#fff', // Preserved camera UI functional color
   },
   captureButtonInner: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff', // Preserved camera UI functional color
   },
   previewContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
     padding: 24,
   },
   previewTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -438,27 +439,27 @@ const styles = StyleSheet.create({
   },
   retakeButton: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border.default,
   },
   retakeButtonText: {
-    color: '#000',
+    color: theme.colors.text.primary,
     fontSize: 16,
     fontWeight: '600',
   },
   nextButton: {
     flex: 1,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
   nextButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },

@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { theme } from '../theme';
 import AuthScreen from '../screens/AuthScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import MainAppScreen from '../screens/MainAppScreen';
@@ -47,12 +48,19 @@ export default function RootNavigator() {
 
   // Authenticated - check if profile is complete
   // Profile is complete when:
-  // 1. Basic info is filled (name, groupId)
-  // 2. If user is a DD (isDD = true), they must have provided driver info
-  // 3. SEP baseline is established
+  // 1. User profile exists in database
+  // 2. Basic info is filled (name, groupId)
+  // 3. If user is a DD (isDD = true), they must have provided driver info
+  // 4. SEP baseline is established
   const isProfileComplete = useMemo(() => {
-    const hasBasicInfo = user && user.name && user.groupId;
-    const hasCompletedDDFlow = !user?.isDD || (user.carMake && user.carModel && user.carPlate);
+    // If no user profile exists yet, onboarding is not complete
+    if (!user) {
+      console.log('Profile completion check: No user profile exists yet');
+      return false;
+    }
+    
+    const hasBasicInfo = user.name && user.groupId;
+    const hasCompletedDDFlow = !user.isDD || (user.carMake && user.carModel && user.carPlate);
     const complete = hasBasicInfo && hasCompletedDDFlow && hasSEPBaseline;
     
     console.log('Profile completion check:', {
@@ -60,18 +68,18 @@ export default function RootNavigator() {
       hasCompletedDDFlow,
       hasSEPBaseline,
       isComplete: complete,
-      userName: user?.name,
-      userGroupId: user?.groupId,
+      userName: user.name,
+      userGroupId: user.groupId,
     });
     
     return complete;
-  }, [user?.name, user?.groupId, user?.isDD, user?.carMake, user?.carModel, user?.carPlate, hasSEPBaseline]);
+  }, [user, user?.name, user?.groupId, user?.isDD, user?.carMake, user?.carModel, user?.carPlate, hasSEPBaseline]);
 
   // Show loading screen while checking auth state or SEP baseline
   if (loading || checkingBaseline) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -105,6 +113,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
 });

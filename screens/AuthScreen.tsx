@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { handleError } from '../utils/errorHandler';
+import { theme } from '../theme/colors';
 
 export default function AuthScreen() {
   const [email, setEmail] = useState('');
@@ -78,6 +79,7 @@ export default function AuthScreen() {
           <TextInput
             style={styles.input}
             placeholder="Email"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -88,6 +90,7 @@ export default function AuthScreen() {
           <TextInput
             style={styles.input}
             placeholder="Password"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -100,7 +103,7 @@ export default function AuthScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={theme.colors.text.onPrimary} />
             ) : (
               <Text style={styles.buttonText}>
                 {isLogin ? 'Log In' : 'Sign Up'}
@@ -128,7 +131,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     flex: 1,
@@ -140,28 +143,29 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
-    color: '#333',
+    color: theme.colors.text.primary,
   },
   subtitle: {
     fontSize: 18,
     textAlign: 'center',
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 48,
   },
   form: {
     width: '100%',
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: theme.colors.border.default,
+    color: theme.colors.text.primary,
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -171,7 +175,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -180,7 +184,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   toggleText: {
-    color: '#007AFF',
+    color: theme.colors.primary.light,
     fontSize: 14,
   },
 });

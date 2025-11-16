@@ -12,6 +12,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../../lib/supabase';
 import { evaluateSEPAttempt } from '../../utils/sep';
 import { SEPBaseline } from '../../types/database.types';
+import { theme } from '../../theme/colors';
 
 type SEPResultRouteParams = {
   eventId: string;
@@ -384,7 +385,7 @@ export default function SEPResultScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   scrollContent: {
     flexGrow: 1,
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginTop: 16,
     textAlign: 'center',
   },
@@ -418,25 +419,25 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
     textAlign: 'center',
   },
   errorText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     paddingHorizontal: 32,
     marginBottom: 12,
   },
   retryButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -444,7 +445,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   backButtonText: {
-    color: '#007AFF',
+    color: theme.colors.primary.main,
     fontSize: 16,
   },
   resultHeader: {
@@ -454,10 +455,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   resultHeaderPass: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.colors.background.elevated,
+    borderWidth: 2,
+    borderColor: theme.colors.functional.success,
   },
   resultHeaderFail: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: theme.colors.background.elevated,
+    borderWidth: 2,
+    borderColor: theme.colors.functional.error,
   },
   resultIcon: {
     fontSize: 64,
@@ -466,13 +471,13 @@ const styles = StyleSheet.create({
   resultTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   resultSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
   },
   metricsContainer: {
@@ -481,11 +486,11 @@ const styles = StyleSheet.create({
   metricsTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 16,
   },
   metricCard: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -499,7 +504,7 @@ const styles = StyleSheet.create({
   metricName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   metricBadge: {
     paddingHorizontal: 12,
@@ -507,13 +512,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   metricBadgePass: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.functional.success,
   },
   metricBadgeFail: {
-    backgroundColor: '#FF5252',
+    backgroundColor: theme.colors.functional.error,
   },
   metricBadgeText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -527,22 +532,22 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   metricValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   metricValueGood: {
-    color: '#4CAF50',
+    color: theme.colors.functional.success,
   },
   metricValueBad: {
-    color: '#FF5252',
+    color: theme.colors.functional.error,
   },
   metricThreshold: {
     fontSize: 12,
-    color: '#999',
+    color: theme.colors.text.tertiary,
     fontStyle: 'italic',
     marginTop: 4,
   },
@@ -553,26 +558,26 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   continueButtonPass: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.functional.success,
   },
   continueButtonFail: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
   },
   continueButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 18,
     fontWeight: '600',
   },
   infoBox: {
-    backgroundColor: '#FFF3CD',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 8,
     padding: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#FFC107',
+    borderLeftColor: theme.colors.functional.warning,
   },
   infoText: {
     fontSize: 14,
-    color: '#856404',
+    color: theme.colors.text.secondary,
     lineHeight: 20,
   },
 });

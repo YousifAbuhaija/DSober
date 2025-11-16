@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { theme } from '../../theme/colors';
 
 interface BasicInfoScreenProps {
   navigation: any;
@@ -137,26 +138,31 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
       // Format phone number before saving
       const formattedPhone = formatPhoneNumber(phoneNumber);
 
-      // Update user profile in database
+      // Use upsert to handle both profile creation and updates
       const { error } = await supabase
         .from('users')
-        .update({
+        .upsert({
+          id: session.user.id,
+          email: session.user.email || '',
           name: name.trim(),
           birthday: birthday.toISOString(),
           age,
           gender,
           phone_number: formattedPhone,
+          role: 'member',
+          is_dd: false,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', session.user.id);
+        }, {
+          onConflict: 'id'
+        });
 
       if (error) throw error;
 
-      // Navigate to group join screen first
+      // Refresh user context to load the newly created/updated profile
+      await refreshUser();
+
+      // Navigate to group join screen
       navigation.navigate('GroupJoin');
-      
-      // Refresh user context after navigation (non-blocking)
-      refreshUser().catch(err => console.error('Error refreshing user:', err));
     } catch (error: any) {
       console.error('Error saving basic info:', error);
       Alert.alert('Error', error.message || 'Failed to save information. Please try again.');
@@ -194,6 +200,7 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
           <TextInput
             style={styles.input}
             placeholder="Enter your full name"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
@@ -207,6 +214,7 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
           <TextInput
             style={styles.input}
             placeholder="MM/DD/YYYY"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={birthdayText}
             onChangeText={(text) => setBirthdayText(formatBirthday(text))}
             keyboardType="numeric"
@@ -249,6 +257,7 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
           <TextInput
             style={styles.input}
             placeholder="(555) 123-4567"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             keyboardType="phone-pad"
@@ -278,7 +287,7 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   contentContainer: {
     padding: 24,
@@ -290,12 +299,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   form: {
     gap: 24,
@@ -306,19 +315,20 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border.default,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.input,
+    color: theme.colors.text.primary,
   },
   hint: {
     fontSize: 14,
-    color: '#999',
+    color: theme.colors.text.tertiary,
     marginTop: 4,
   },
   genderContainer: {
@@ -326,36 +336,36 @@ const styles = StyleSheet.create({
   },
   genderButton: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border.default,
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.input,
   },
   genderButtonSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
+    borderColor: theme.colors.primary.main,
   },
   genderButtonText: {
     fontSize: 16,
-    color: '#000',
+    color: theme.colors.text.primary,
     textAlign: 'center',
   },
   genderButtonTextSelected: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontWeight: '600',
   },
   nextButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 16,
   },
   nextButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: theme.colors.state.disabled,
   },
   nextButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },

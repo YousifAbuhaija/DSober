@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { theme } from '../../theme/colors';
 
 interface DDInterestScreenProps {
   navigation: any;
@@ -145,7 +146,7 @@ export default function DDInterestScreen({ navigation }: DDInterestScreenProps) 
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.colors.text.onPrimary} />
           ) : (
             <Text style={styles.nextButtonText}>Continue</Text>
           )}
@@ -158,7 +159,7 @@ export default function DDInterestScreen({ navigation }: DDInterestScreenProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     flex: 1,
@@ -171,16 +172,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 22,
   },
   infoBox: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 32,
@@ -188,12 +189,12 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   infoText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 20,
   },
   optionContainer: {
@@ -202,14 +203,14 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border.default,
     borderRadius: 12,
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.input,
   },
   optionButtonSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E8F4FF',
+    borderColor: theme.colors.primary.main,
+    backgroundColor: theme.colors.primary.dark,
   },
   optionContent: {
     gap: 4,
@@ -217,29 +218,29 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   optionTitleSelected: {
-    color: '#007AFF',
+    color: theme.colors.secondary.main,
   },
   optionDescription: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   optionDescriptionSelected: {
-    color: '#0066CC',
+    color: theme.colors.secondary.light,
   },
   nextButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
   nextButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: theme.colors.state.disabled,
   },
   nextButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },

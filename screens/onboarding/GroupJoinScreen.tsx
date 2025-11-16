@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { theme } from '../../theme/colors';
 
 interface GroupJoinScreenProps {
   navigation: any;
@@ -89,6 +90,7 @@ export default function GroupJoinScreen({ navigation }: GroupJoinScreenProps) {
             <TextInput
               style={styles.input}
               placeholder="Enter access code"
+              placeholderTextColor={theme.colors.text.tertiary}
               value={accessCode}
               onChangeText={setAccessCode}
               autoCapitalize="characters"
@@ -106,7 +108,7 @@ export default function GroupJoinScreen({ navigation }: GroupJoinScreenProps) {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={theme.colors.text.onPrimary} />
             ) : (
               <Text style={styles.joinButtonText}>Join Chapter</Text>
             )}
@@ -126,7 +128,7 @@ export default function GroupJoinScreen({ navigation }: GroupJoinScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     flex: 1,
@@ -139,12 +141,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 22,
   },
   form: {
@@ -156,32 +158,33 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border.default,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.input,
+    color: theme.colors.text.primary,
   },
   hint: {
     fontSize: 14,
-    color: '#999',
+    color: theme.colors.text.tertiary,
   },
   joinButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 16,
   },
   joinButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: theme.colors.state.disabled,
   },
   joinButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -191,7 +194,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
   },
 });

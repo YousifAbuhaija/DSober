@@ -6,6 +6,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { theme } from '../../theme/colors';
 
 interface OnboardingCompleteScreenProps {
   navigation: any;
@@ -86,7 +87,7 @@ export default function OnboardingCompleteScreen({ navigation }: OnboardingCompl
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     flex: 1,
@@ -101,31 +102,31 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.functional.success,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkmark: {
     fontSize: 60,
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontWeight: 'bold',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     textAlign: 'center',
     marginBottom: 16,
   },
   message: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,
   },
   summaryBox: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 20,
     marginBottom: 32,
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 16,
   },
   summaryItem: {
@@ -142,24 +143,24 @@ const styles = StyleSheet.create({
   },
   summaryBullet: {
     fontSize: 16,
-    color: '#007AFF',
+    color: theme.colors.secondary.main,
     marginRight: 8,
     fontWeight: 'bold',
   },
   summaryText: {
     flex: 1,
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 22,
   },
   continueButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 18,
     alignItems: 'center',
   },
   continueButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 18,
     fontWeight: '600',
   },

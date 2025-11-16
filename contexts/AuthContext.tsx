@@ -169,13 +169,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) throw error;
 
-    // Profile is automatically created by database trigger
-    // Wait a moment for the trigger to complete
+    // Profile will be created when user completes BasicInfo screen
+    // Set user to null initially - they'll go through onboarding
     if (data.user) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const profile = await fetchUserProfile(data.user.id);
-      setUser(profile);
+      setUser(null);
     }
   };
 

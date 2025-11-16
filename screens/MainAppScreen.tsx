@@ -3,6 +3,7 @@ import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
+import { theme } from '../theme';
 import EventsListScreen from './EventsListScreen';
 import EventDetailScreen from './EventDetailScreen';
 import CreateEventScreen from './CreateEventScreen';
@@ -179,8 +180,11 @@ export default function MainAppScreen() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#8E8E93',
+        tabBarStyle: {
+          backgroundColor: theme.colors.background.primary,
+        },
+        tabBarActiveTintColor: theme.colors.primary.main,
+        tabBarInactiveTintColor: theme.colors.state.inactive,
       }}
     >
       <Tab.Screen 

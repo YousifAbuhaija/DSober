@@ -19,6 +19,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { uploadAudio } from '../../utils/storage';
 import { supabase } from '../../lib/supabase';
+import { theme } from '../../theme/colors';
 
 type SEPPhraseRouteParams = {
   mode: 'baseline' | 'attempt';
@@ -377,7 +378,7 @@ export default function SEPPhraseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     flex: 1,
@@ -392,18 +393,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: 32,
   },
   instructionsBox: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 20,
     marginBottom: 32,
@@ -411,22 +412,22 @@ const styles = StyleSheet.create({
   instructionsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   instructionsText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 24,
   },
   startButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
   startButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -435,20 +436,20 @@ const styles = StyleSheet.create({
   },
   phraseLabel: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 12,
     textAlign: 'center',
   },
   phraseBox: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 24,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.primary.main,
   },
   phraseText: {
     fontSize: 20,
-    color: '#000',
+    color: theme.colors.text.primary,
     textAlign: 'center',
     lineHeight: 28,
     fontWeight: '500',
@@ -462,22 +463,22 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
     borderWidth: 4,
-    borderColor: '#FF3B30',
+    borderColor: '#FF3B30', // Preserved functional red for recording
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   recordButtonActive: {
-    borderColor: '#FF3B30',
+    borderColor: '#FF3B30', // Preserved functional red for recording
     backgroundColor: '#FFE5E5',
   },
   recordButtonInner: {
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#FF3B30', // Preserved functional red for recording
   },
   recordButtonInnerActive: {
     borderRadius: 8,
@@ -487,12 +488,12 @@ const styles = StyleSheet.create({
   recordLabel: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   durationContainer: {
     marginTop: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -500,7 +501,7 @@ const styles = StyleSheet.create({
   durationText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FF3B30',
+    color: '#FF3B30', // Preserved functional red for recording
   },
   resultContainer: {
     alignItems: 'center',
@@ -508,16 +509,16 @@ const styles = StyleSheet.create({
   },
   resultLabel: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
   },
   resultValue: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: theme.colors.functional.success,
   },
   playbackButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: theme.colors.functional.success,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -525,7 +526,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   playbackButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -536,32 +537,32 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border.default,
   },
   retryButtonText: {
-    color: '#000',
+    color: theme.colors.text.primary,
     fontSize: 16,
     fontWeight: '600',
   },
   nextButton: {
     flex: 1,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
   nextButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   tipsContainer: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -569,15 +570,15 @@ const styles = StyleSheet.create({
   tipsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
   },
   tipsText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 20,
   },
   playbackButtonActive: {
-    backgroundColor: '#FF9500',
+    backgroundColor: theme.colors.functional.warning,
   },
 });

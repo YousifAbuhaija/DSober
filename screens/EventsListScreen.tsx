@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Event } from '../types/database.types';
 import { updateEventStatusesToActive, getEventStatusDisplay, getEventStatusColor } from '../utils/eventStatus';
+import { theme } from '../theme/colors';
 
 type EventsStackParamList = {
   EventsList: undefined;
@@ -100,13 +101,13 @@ export default function EventsListScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming':
-        return '#007AFF';
+        return theme.colors.primary.main;
       case 'active':
-        return '#34C759';
+        return theme.colors.functional.success;
       case 'completed':
-        return '#8E8E93';
+        return theme.colors.text.tertiary;
       default:
-        return '#8E8E93';
+        return theme.colors.text.tertiary;
     }
   };
 
@@ -143,7 +144,7 @@ export default function EventsListScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -175,13 +176,13 @@ export default function EventsListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   list: {
     padding: 16,
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
   eventName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     flex: 1,
     marginRight: 8,
   },
@@ -221,21 +222,21 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   eventDateTime: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 4,
   },
   eventLocation: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
   },
   eventDescription: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     lineHeight: 20,
   },
   emptyContainer: {
@@ -246,12 +247,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
   },
   fab: {
     position: 'absolute',
@@ -260,7 +261,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -271,7 +272,7 @@ const styles = StyleSheet.create({
   },
   fabText: {
     fontSize: 32,
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontWeight: '300',
   },
 });

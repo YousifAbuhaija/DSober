@@ -13,6 +13,7 @@ import { Camera } from 'expo-camera';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadImage } from '../../utils/storage';
+import { theme } from '../../theme/colors';
 
 interface ProfilePhotoScreenProps {
   navigation: any;
@@ -202,7 +203,7 @@ export default function ProfilePhotoScreen({ navigation }: ProfilePhotoScreenPro
       >
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.colors.text.onPrimary} />
             <Text style={styles.continueButtonText}>
               {uploadingPhoto ? 'Uploading photo...' : 'Saving...'}
             </Text>
@@ -224,7 +225,7 @@ export default function ProfilePhotoScreen({ navigation }: ProfilePhotoScreenPro
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
     padding: 24,
   },
   header: {
@@ -234,16 +235,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 22,
   },
   consentBox: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 32,
@@ -257,7 +258,7 @@ const styles = StyleSheet.create({
   consentText: {
     flex: 1,
     fontSize: 14,
-    color: '#1976D2',
+    color: theme.colors.text.secondary,
     lineHeight: 20,
   },
   previewContainer: {
@@ -270,20 +271,20 @@ const styles = StyleSheet.create({
     width: 280,
     height: 280,
     borderRadius: 140,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderWidth: 4,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.primary.main,
   },
   retakeButton: {
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.primary.light,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 32,
   },
   retakeButtonText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: theme.colors.primary.light,
     fontWeight: '600',
   },
   captureContainer: {
@@ -296,9 +297,9 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderWidth: 3,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border.default,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -311,38 +312,38 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   captureButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
   captureButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   chooseButton: {
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.primary.light,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.input,
   },
   chooseButtonText: {
-    color: '#007AFF',
+    color: theme.colors.primary.light,
     fontSize: 16,
     fontWeight: '600',
   },
   continueButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 16,
   },
   continueButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: theme.colors.state.disabled,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   continueButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -358,11 +359,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: theme.colors.border.default,
   },
   footerText: {
     fontSize: 14,
-    color: '#999',
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
     lineHeight: 20,
   },

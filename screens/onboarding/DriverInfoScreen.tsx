@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadImage } from '../../utils/storage';
+import { theme } from '../../theme/colors';
 
 interface DriverInfoScreenProps {
   navigation: any;
@@ -197,6 +198,7 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
           <TextInput
             style={styles.input}
             placeholder="e.g., Toyota, Honda, Ford"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={carMake}
             onChangeText={setCarMake}
             autoCapitalize="words"
@@ -210,6 +212,7 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
           <TextInput
             style={styles.input}
             placeholder="e.g., Camry, Civic, F-150"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={carModel}
             onChangeText={setCarModel}
             autoCapitalize="words"
@@ -223,6 +226,7 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
           <TextInput
             style={styles.input}
             placeholder="e.g., ABC1234"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={carPlate}
             onChangeText={setCarPlate}
             autoCapitalize="characters"
@@ -237,6 +241,7 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
           <TextInput
             style={styles.input}
             placeholder="e.g., (555) 123-4567"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             keyboardType="phone-pad"
@@ -287,7 +292,7 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
         >
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={theme.colors.text.onPrimary} />
               <Text style={styles.nextButtonText}>
                 {uploadingPhoto ? 'Uploading photo...' : 'Saving...'}
               </Text>
@@ -310,7 +315,7 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   contentContainer: {
     padding: 24,
@@ -322,12 +327,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 22,
   },
   form: {
@@ -339,32 +344,33 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border.default,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.input,
+    color: theme.colors.text.primary,
   },
   hint: {
     fontSize: 14,
-    color: '#999',
+    color: theme.colors.text.tertiary,
   },
   uploadButton: {
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.primary.light,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    backgroundColor: '#F0F8FF',
+    backgroundColor: theme.colors.primary.dark,
     borderStyle: 'dashed',
   },
   uploadButtonText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: theme.colors.primary.light,
     fontWeight: '600',
   },
   photoPreviewContainer: {
@@ -374,29 +380,29 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     borderRadius: 8,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
   },
   changePhotoButton: {
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.primary.light,
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
   },
   changePhotoText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: theme.colors.primary.light,
     fontWeight: '600',
   },
   nextButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 16,
   },
   nextButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: theme.colors.state.disabled,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -404,7 +410,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   nextButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -412,11 +418,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingTop: 24,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: theme.colors.border.default,
   },
   footerText: {
     fontSize: 14,
-    color: '#999',
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
     lineHeight: 20,
   },

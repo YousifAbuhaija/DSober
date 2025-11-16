@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { theme } from '../../theme/colors';
 
 type SEPReactionRouteParams = {
   mode?: 'baseline' | 'attempt';
@@ -260,16 +261,16 @@ export default function SEPReactionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.primary,
   },
   containerReady: {
-    backgroundColor: '#FFF9E6',
+    backgroundColor: '#FFF9E6', // Preserved functional yellow tint
   },
   containerGo: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#4CAF50', // Preserved functional green
   },
   containerEarly: {
-    backgroundColor: '#FF5252',
+    backgroundColor: '#FF5252', // Preserved functional red
   },
   content: {
     flex: 1,
@@ -284,18 +285,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: 32,
   },
   instructionsBox: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 20,
     marginBottom: 32,
@@ -303,22 +304,22 @@ const styles = StyleSheet.create({
   instructionsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   instructionsText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 24,
   },
   startButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
   startButtonText: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 12,
   },
   progressBar: {
@@ -339,13 +340,13 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#ddd',
+    backgroundColor: theme.colors.border.default,
   },
   progressDotComplete: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.functional.success,
   },
   progressDotActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
   },
   instructionArea: {
     flex: 1,
@@ -354,7 +355,7 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     fontSize: 24,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
   },
   goText: {
@@ -369,11 +370,11 @@ const styles = StyleSheet.create({
   resultText: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: theme.colors.functional.success,
   },
   resultLabel: {
     fontSize: 18,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginTop: 8,
   },
   earlyContainer: {
@@ -390,7 +391,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   historyContainer: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -398,7 +399,7 @@ const styles = StyleSheet.create({
   historyTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
   },
   historyList: {
@@ -408,8 +409,8 @@ const styles = StyleSheet.create({
   },
   historyItem: {
     fontSize: 14,
-    color: '#000',
-    backgroundColor: '#fff',
+    color: theme.colors.text.primary,
+    backgroundColor: theme.colors.background.input,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,

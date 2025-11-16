@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Event, DDAssignment, DDRequest, User } from '../types/database.types';
 import { markEventAsCompleted } from '../utils/eventStatus';
+import { theme } from '../theme/colors';
 
 type EventsStackParamList = {
   EventsList: undefined;
@@ -355,13 +356,13 @@ export default function EventDetailScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming':
-        return '#007AFF';
+        return theme.colors.primary.main;
       case 'active':
-        return '#34C759';
+        return theme.colors.functional.success;
       case 'completed':
-        return '#8E8E93';
+        return theme.colors.text.tertiary;
       default:
-        return '#8E8E93';
+        return theme.colors.text.tertiary;
     }
   };
 
@@ -554,7 +555,7 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -679,7 +680,7 @@ export default function EventDetailScreen() {
 
             {loadingMembers ? (
               <View style={styles.modalLoadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+                <ActivityIndicator size="large" color={theme.colors.primary.main} />
               </View>
             ) : (
               <FlatList
@@ -704,7 +705,7 @@ export default function EventDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     padding: 16,
@@ -713,14 +714,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   errorText: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -733,7 +734,7 @@ const styles = StyleSheet.create({
   eventName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   statusBadge: {
@@ -745,10 +746,10 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -761,7 +762,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   detailRow: {
@@ -775,7 +776,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 16,
-    color: '#333',
+    color: theme.colors.text.primary,
     flex: 1,
   },
   descriptionContainer: {
@@ -784,23 +785,25 @@ const styles = StyleSheet.create({
   descriptionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 4,
   },
   descriptionText: {
     fontSize: 14,
-    color: '#333',
+    color: theme.colors.text.primary,
     lineHeight: 20,
   },
   infoBox: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
   },
   infoText: {
     fontSize: 14,
-    color: '#1565C0',
+    color: theme.colors.text.secondary,
     lineHeight: 20,
   },
   statusBox: {
@@ -813,7 +816,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   primaryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
@@ -823,33 +826,33 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   secondaryButton: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.secondary.main,
     marginTop: 12,
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: theme.colors.secondary.main,
   },
   completeButton: {
-    borderColor: '#8E8E93',
+    borderColor: theme.colors.text.tertiary,
   },
   completeButtonText: {
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   ddCard: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -862,7 +865,7 @@ const styles = StyleSheet.create({
   ddName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   ddStatusBadge: {
     paddingHorizontal: 8,
@@ -875,11 +878,11 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
@@ -891,24 +894,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: theme.colors.border.default,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
     fontSize: 20,
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
   },
   modalLoadingContainer: {
     padding: 40,
@@ -919,7 +922,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   memberItem: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -928,9 +931,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   memberItemAssigned: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.colors.background.elevated,
     borderWidth: 1,
-    borderColor: '#4CAF50',
+    borderColor: theme.colors.functional.success,
   },
   memberInfo: {
     flex: 1,
@@ -938,17 +941,17 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   memberEmail: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 4,
   },
   ddBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -957,7 +960,7 @@ const styles = StyleSheet.create({
   ddBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   assignedIndicator: {
     marginLeft: 12,
@@ -965,7 +968,7 @@ const styles = StyleSheet.create({
   assignedText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#4CAF50',
+    color: theme.colors.functional.success,
   },
   emptyContainer: {
     padding: 40,
@@ -973,6 +976,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
   },
 });

@@ -15,6 +15,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { theme } from '../theme/colors';
 
 type EventsStackParamList = {
   EventsList: undefined;
@@ -235,7 +236,7 @@ export default function CreateEventScreen() {
         disabled={creating}
       >
         {creating ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={theme.colors.text.onPrimary} />
         ) : (
           <Text style={styles.createButtonText}>Create Event</Text>
         )}
@@ -255,7 +256,7 @@ export default function CreateEventScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     padding: 16,
@@ -266,20 +267,20 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 10,
     padding: 16,
     fontSize: 16,
-    color: '#000',
+    color: theme.colors.text.primary,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: theme.colors.border.default,
   },
   inputError: {
-    borderColor: '#FF3B30',
+    borderColor: theme.colors.border.error,
   },
   textArea: {
     minHeight: 100,
@@ -287,7 +288,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: '#FF3B30',
+    color: theme.colors.functional.error,
     marginTop: 4,
   },
   dateTimeRow: {
@@ -298,11 +299,11 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: theme.colors.border.default,
   },
   dateTimeIcon: {
     fontSize: 20,
@@ -310,11 +311,11 @@ const styles = StyleSheet.create({
   },
   dateTimeText: {
     fontSize: 16,
-    color: '#000',
+    color: theme.colors.text.primary,
     flex: 1,
   },
   createButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
@@ -328,19 +329,19 @@ const styles = StyleSheet.create({
   createButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   cancelButton: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E5E5EA',
+    borderColor: theme.colors.border.default,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
   },
 });
