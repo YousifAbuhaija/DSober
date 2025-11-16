@@ -25,7 +25,7 @@ type NavigationProp = StackNavigationProp<EventsStackParamList, 'EventsList'>;
 
 export default function EventsListScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,10 +71,14 @@ export default function EventsListScreen() {
     fetchEvents();
   }, [user?.groupId]);
 
-  // Refresh events when screen comes into focus
+  // Refresh events and user data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchEvents();
+      const refresh = async () => {
+        await refreshUser(); // Refresh user to get latest dd_status
+        await fetchEvents();
+      };
+      refresh();
     }, [user?.groupId])
   );
 

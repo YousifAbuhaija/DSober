@@ -40,6 +40,7 @@ export default function SEPPhraseScreen() {
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     // Request audio permissions on mount
@@ -94,9 +95,22 @@ export default function SEPPhraseScreen() {
       console.log('About to call audioRecorder.record()');
       await audioRecorder.record();
       console.log('Recording started successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start recording:', error);
-      Alert.alert('Error', 'Failed to start recording. Please try again.');
+      
+      // Check if error is due to audio session conflict (call, music, etc.)
+      const errorMessage = error?.message || '';
+      if (errorMessage.includes('Session activation failed') || 
+          errorMessage.includes('audio session') ||
+          errorMessage.includes('configure audio')) {
+        Alert.alert(
+          'Audio In Use',
+          'Cannot record audio. Please end any phone calls, close other apps using the microphone, and try again.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to start recording. Please try again.');
+      }
     }
   };
 
@@ -138,15 +152,33 @@ export default function SEPPhraseScreen() {
     if (!audioUri) return;
 
     try {
-      if (audioPlayer.playing) {
+      if (isPlaying) {
+        // Stop playback
         audioPlayer.pause();
+        setIsPlaying(false);
       } else {
+        // Set audio mode for playback (louder volume)
+        await setAudioModeAsync({
+          allowsRecording: false,
+          playsInSilentMode: true,
+        });
+        
         // Replace the audio source and play
         audioPlayer.replace(audioUri);
         audioPlayer.play();
+        setIsPlaying(true);
+        
+        // Listen for when playback finishes
+        const checkPlayback = setInterval(() => {
+          if (!audioPlayer.playing) {
+            setIsPlaying(false);
+            clearInterval(checkPlayback);
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('Error with playback:', error);
+      setIsPlaying(false);
       Alert.alert('Error', 'Failed to play recording.');
     }
   };
@@ -289,11 +321,16 @@ export default function SEPPhraseScreen() {
               </View>
 
               <TouchableOpacity
-                style={styles.playbackButton}
+                style={[
+                  styles.playbackButton,
+                  isPlaying && styles.playbackButtonActive
+                ]}
                 onPress={handlePlayback}
                 disabled={isUploading}
               >
-                <Text style={styles.playbackButtonText}>▶ Play Recording</Text>
+                <Text style={styles.playbackButtonText}>
+                  {isPlaying ? '⏸ Stop Playback' : '▶ Play Recording'}
+                </Text>
               </TouchableOpacity>
 
               <View style={styles.buttonRow}>
@@ -539,5 +576,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  playbackButtonActive: {
+    backgroundColor: '#FF9500',
   },
 });

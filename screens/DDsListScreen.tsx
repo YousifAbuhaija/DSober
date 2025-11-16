@@ -194,8 +194,11 @@ export default function DDsListScreen() {
   // Refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      refreshUser();
-      fetchActiveDDs();
+      const refresh = async () => {
+        await refreshUser();
+        await fetchActiveDDs();
+      };
+      refresh();
     }, [selectedEventId])
   );
 

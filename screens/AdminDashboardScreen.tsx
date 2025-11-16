@@ -348,19 +348,15 @@ export default function AdminDashboardScreen() {
 
       if (userUpdateError) throw userUpdateError;
 
-      // 2. Update DDAssignment status to 'assigned'
+      // 2. Delete ALL DD assignments for this user (they must request again)
       const { error: assignmentError } = await supabase
         .from('dd_assignments')
-        .update({ 
-          status: 'assigned',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('event_id', alert.eventId)
+        .delete()
         .eq('user_id', alert.userId);
 
       if (assignmentError) throw assignmentError;
 
-      // 3. Resolve ALL unresolved alerts for this user (not just this event)
+      // 3. Resolve ALL unresolved alerts for this user
       const { error: alertError } = await supabase
         .from('admin_alerts')
         .update({
@@ -375,7 +371,10 @@ export default function AdminDashboardScreen() {
       // Remove all alerts for this user from local state
       setSepAlerts((prev) => prev.filter((a) => a.userId !== alert.userId));
 
-      Alert.alert('DD Reinstated', `${alert.user.name} has been fully reinstated as DD`);
+      Alert.alert(
+        'DD Reinstated', 
+        `${alert.user.name} has been reinstated as DD. They will need to request to be DD for events again.`
+      );
     } catch (error) {
       console.error('Error reinstating DD:', error);
       Alert.alert('Error', 'Failed to reinstate DD. Please try again.');

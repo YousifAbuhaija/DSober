@@ -70,11 +70,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize session
   useEffect(() => {
+    let realtimeChannel: any = null;
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
         fetchUserProfile(session.user.id).then(setUser);
+        
+        // Set up real-time subscription to user's profile changes
+        realtimeChannel = supabase
+          .channel('user-profile-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'users',
+              filter: `id=eq.${session.user.id}`,
+            },
+            (payload) => {
+              console.log('User profile updated in real-time:', payload);
+              // Refresh user profile when it changes
+              fetchUserProfile(session.user.id).then(setUser);
+            }
+          )
+          .subscribe();
       }
       setLoading(false);
     });
@@ -86,14 +107,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           const profile = await fetchUserProfile(session.user.id);
           setUser(profile);
+          
+          // Set up real-time subscription for new session
+          if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel);
+          }
+          
+          realtimeChannel = supabase
+            .channel('user-profile-changes')
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'users',
+                filter: `id=eq.${session.user.id}`,
+              },
+              (payload) => {
+                console.log('User profile updated in real-time:', payload);
+                fetchUserProfile(session.user.id).then(setUser);
+              }
+            )
+            .subscribe();
         } else {
           setUser(null);
+          if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel);
+          }
         }
         setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -136,7 +187,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     if (session?.user) {
+      console.log('Refreshing user profile...');
       const profile = await fetchUserProfile(session.user.id);
+      console.log('User profile refreshed:', { 
+        id: profile?.id, 
+        name: profile?.name, 
+        ddStatus: profile?.ddStatus 
+      });
       setUser(profile);
     }
   };

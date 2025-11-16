@@ -76,8 +76,11 @@ export default function ProfileScreen() {
   // Refresh user data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      refreshUser();
-      fetchAdditionalData();
+      const refresh = async () => {
+        await refreshUser();
+        await fetchAdditionalData();
+      };
+      refresh();
     }, [user?.id])
   );
 
