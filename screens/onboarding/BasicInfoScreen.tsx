@@ -158,9 +158,10 @@ export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
 
       if (error) throw error;
 
-      // Refresh user context to load the newly created/updated profile
-      await refreshUser();
-
+      // Don't refresh user context here - it will cause navigation to re-evaluate
+      // profile completion and kick user back to BasicInfo since groupId is still null
+      // The user context will be refreshed when onboarding is complete
+      
       // Navigate to group join screen
       navigation.navigate('GroupJoin');
     } catch (error: any) {

@@ -12,6 +12,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { DDSession, Event } from '../types/database.types';
+import { theme } from '../theme/colors';
 
 type DDActiveSessionRouteParams = {
   eventId: string;
@@ -176,7 +177,7 @@ export default function DDActiveSessionScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
         <Text style={styles.loadingText}>Loading session...</Text>
       </View>
     );
@@ -254,7 +255,7 @@ export default function DDActiveSessionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     flex: 1,
@@ -264,39 +265,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginTop: 16,
   },
   activeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 20,
     paddingVertical: 12,
     paddingHorizontal: 20,
     marginBottom: 24,
     alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.functional.success,
   },
   activeDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.functional.success,
     marginRight: 8,
   },
   activeText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2E7D32',
+    color: theme.colors.functional.success,
     letterSpacing: 1,
   },
   eventCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -309,7 +312,7 @@ const styles = StyleSheet.create({
   eventLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 8,
@@ -317,7 +320,7 @@ const styles = StyleSheet.create({
   eventName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   eventDetailRow: {
@@ -330,11 +333,11 @@ const styles = StyleSheet.create({
   },
   eventDetail: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     flex: 1,
   },
   timerCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 16,
     padding: 32,
     marginBottom: 24,
@@ -348,7 +351,7 @@ const styles = StyleSheet.create({
   timerLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 16,
@@ -356,20 +359,22 @@ const styles = StyleSheet.create({
   timerValue: {
     fontSize: 56,
     fontWeight: '700',
-    color: '#007AFF',
+    color: theme.colors.primary.main,
     fontVariant: ['tabular-nums'],
     marginBottom: 8,
   },
   timerSubtext: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
   },
   infoIcon: {
     fontSize: 20,
@@ -378,17 +383,17 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#1565C0',
+    color: theme.colors.text.secondary,
     lineHeight: 20,
   },
   endButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: theme.colors.functional.error,
     borderRadius: 12,
     padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 56,
-    shadowColor: '#FF3B30',
+    shadowColor: theme.colors.functional.error,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -397,17 +402,17 @@ const styles = StyleSheet.create({
   endButtonText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   rideQueueButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 12,
     padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     marginBottom: 16,
-    shadowColor: '#007AFF',
+    shadowColor: theme.colors.primary.main,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -420,6 +425,6 @@ const styles = StyleSheet.create({
   rideQueueButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
 });

@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchUserProfile(session.user.id).then(setUser);
         
         // Set up real-time subscription to user's profile changes
+        // Only listen for specific critical fields to avoid triggering on every onboarding step
         realtimeChannel = supabase
           .channel('user-profile-changes')
           .on(
@@ -91,8 +92,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             },
             (payload) => {
               console.log('User profile updated in real-time:', payload);
-              // Refresh user profile when it changes
-              fetchUserProfile(session.user.id).then(setUser);
+              // Only refresh if critical fields changed (dd_status, role, is_dd)
+              // This prevents constant refreshes during onboarding flow
+              const oldRecord = payload.old as any;
+              const newRecord = payload.new as any;
+              
+              const criticalFieldsChanged = 
+                oldRecord?.dd_status !== newRecord?.dd_status ||
+                oldRecord?.role !== newRecord?.role ||
+                oldRecord?.is_dd !== newRecord?.is_dd;
+              
+              if (criticalFieldsChanged) {
+                console.log('Critical field changed, refreshing user profile');
+                fetchUserProfile(session.user.id).then(setUser);
+              }
             }
           )
           .subscribe();
@@ -125,7 +138,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               },
               (payload) => {
                 console.log('User profile updated in real-time:', payload);
-                fetchUserProfile(session.user.id).then(setUser);
+                // Only refresh if critical fields changed
+                const oldRecord = payload.old as any;
+                const newRecord = payload.new as any;
+                
+                const criticalFieldsChanged = 
+                  oldRecord?.dd_status !== newRecord?.dd_status ||
+                  oldRecord?.role !== newRecord?.role ||
+                  oldRecord?.is_dd !== newRecord?.is_dd;
+                
+                if (criticalFieldsChanged) {
+                  console.log('Critical field changed, refreshing user profile');
+                  fetchUserProfile(session.user.id).then(setUser);
+                }
               }
             )
             .subscribe();

@@ -127,11 +127,12 @@ export default function ProfilePhotoScreen({ navigation }: ProfilePhotoScreenPro
 
       if (error) throw error;
 
+      // Don't refresh user context here - it will cause navigation to re-evaluate
+      // profile completion and potentially kick user back to BasicInfo
+      // The user context will be refreshed when onboarding is complete
+      
       // Navigate to SEP baseline flow
       navigation.navigate('SEPReaction', { mode: 'baseline' });
-
-      // Refresh user context after navigation (non-blocking)
-      refreshUser().catch(err => console.error('Error refreshing user:', err));
     } catch (error: any) {
       console.error('Error saving profile photo:', error);
       Alert.alert('Error', error.message || 'Failed to save profile photo. Please try again.');

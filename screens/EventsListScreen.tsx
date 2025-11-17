@@ -73,13 +73,12 @@ export default function EventsListScreen() {
   }, [user?.groupId]);
 
   // Refresh events and user data when screen comes into focus
+  // Fetch events when screen comes into focus
+  // Note: We don't need to call refreshUser() here because AuthContext
+  // has a real-time subscription that automatically updates user data
   useFocusEffect(
     useCallback(() => {
-      const refresh = async () => {
-        await refreshUser(); // Refresh user to get latest dd_status
-        await fetchEvents();
-      };
-      refresh();
+      fetchEvents();
     }, [user?.groupId])
   );
 

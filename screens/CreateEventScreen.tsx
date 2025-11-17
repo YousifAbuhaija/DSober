@@ -43,6 +43,9 @@ export default function CreateEventScreen() {
     locationText: '',
   });
 
+  // Focus states
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+
   const validateForm = (): boolean => {
     const newErrors = {
       name: '',
@@ -146,13 +149,20 @@ export default function CreateEventScreen() {
       <View style={styles.section}>
         <Text style={styles.label}>Event Name *</Text>
         <TextInput
-          style={[styles.input, errors.name ? styles.inputError : null]}
+          style={[
+            styles.input,
+            errors.name ? styles.inputError : null,
+            focusedInput === 'name' ? styles.inputFocused : null,
+          ]}
           placeholder="e.g., Friday Night Social"
+          placeholderTextColor={theme.colors.text.tertiary}
           value={name}
           onChangeText={(text) => {
             setName(text);
             if (errors.name) setErrors({ ...errors, name: '' });
           }}
+          onFocus={() => setFocusedInput('name')}
+          onBlur={() => setFocusedInput(null)}
           maxLength={100}
         />
         {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
@@ -161,10 +171,17 @@ export default function CreateEventScreen() {
       <View style={styles.section}>
         <Text style={styles.label}>Description</Text>
         <TextInput
-          style={[styles.input, styles.textArea]}
+          style={[
+            styles.input,
+            styles.textArea,
+            focusedInput === 'description' ? styles.inputFocused : null,
+          ]}
           placeholder="Add event details (optional)"
+          placeholderTextColor={theme.colors.text.tertiary}
           value={description}
           onChangeText={setDescription}
+          onFocus={() => setFocusedInput('description')}
+          onBlur={() => setFocusedInput(null)}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
@@ -216,13 +233,20 @@ export default function CreateEventScreen() {
       <View style={styles.section}>
         <Text style={styles.label}>Location *</Text>
         <TextInput
-          style={[styles.input, errors.locationText ? styles.inputError : null]}
+          style={[
+            styles.input,
+            errors.locationText ? styles.inputError : null,
+            focusedInput === 'location' ? styles.inputFocused : null,
+          ]}
           placeholder="e.g., Chapter House, 123 Main St"
+          placeholderTextColor={theme.colors.text.tertiary}
           value={locationText}
           onChangeText={(text) => {
             setLocationText(text);
             if (errors.locationText) setErrors({ ...errors, locationText: '' });
           }}
+          onFocus={() => setFocusedInput('location')}
+          onBlur={() => setFocusedInput(null)}
           maxLength={200}
         />
         {errors.locationText ? (
@@ -278,6 +302,9 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     borderWidth: 1,
     borderColor: theme.colors.border.default,
+  },
+  inputFocused: {
+    borderColor: theme.colors.border.focus,
   },
   inputError: {
     borderColor: theme.colors.border.error,

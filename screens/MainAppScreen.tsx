@@ -31,7 +31,17 @@ const ProfileStack = createStackNavigator();
 // Stack navigator for Events tab
 function EventsStackNavigator() {
   return (
-    <EventsStack.Navigator>
+    <EventsStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.background.primary,
+        },
+        headerTintColor: theme.colors.text.primary,
+        headerTitleStyle: {
+          fontWeight: '600',
+        },
+      }}
+    >
       <EventsStack.Screen 
         name="EventsList" 
         component={EventsListScreen}
@@ -93,7 +103,17 @@ function EventsStackNavigator() {
 // Stack navigator for DDs tab
 function DDsStackNavigator() {
   return (
-    <DDsStack.Navigator>
+    <DDsStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.background.primary,
+        },
+        headerTintColor: theme.colors.text.primary,
+        headerTitleStyle: {
+          fontWeight: '600',
+        },
+      }}
+    >
       <DDsStack.Screen 
         name="DDsList" 
         component={DDsListScreen}
@@ -116,7 +136,17 @@ function DDsStackNavigator() {
 // Stack navigator for Rides tab
 function RidesStackNavigator() {
   return (
-    <RidesStack.Navigator>
+    <RidesStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.background.primary,
+        },
+        headerTintColor: theme.colors.text.primary,
+        headerTitleStyle: {
+          fontWeight: '600',
+        },
+      }}
+    >
       <RidesStack.Screen 
         name="RidesMain" 
         component={RidesScreen}
@@ -144,7 +174,17 @@ function RidesStackNavigator() {
 // Stack navigator for Admin tab
 function AdminStackNavigator() {
   return (
-    <AdminStack.Navigator>
+    <AdminStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.background.primary,
+        },
+        headerTintColor: theme.colors.text.primary,
+        headerTitleStyle: {
+          fontWeight: '600',
+        },
+      }}
+    >
       <AdminStack.Screen 
         name="AdminDashboard" 
         component={AdminDashboardScreen}
@@ -162,7 +202,17 @@ function AdminStackNavigator() {
 // Stack navigator for Profile tab
 function ProfileStackNavigator() {
   return (
-    <ProfileStack.Navigator>
+    <ProfileStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.background.primary,
+        },
+        headerTintColor: theme.colors.text.primary,
+        headerTitleStyle: {
+          fontWeight: '600',
+        },
+      }}
+    >
       <ProfileStack.Screen 
         name="ProfileMain" 
         component={ProfileScreen}
@@ -182,8 +232,9 @@ export default function MainAppScreen() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.colors.background.primary,
+          borderTopColor: theme.colors.border.default,
         },
-        tabBarActiveTintColor: theme.colors.primary.main,
+        tabBarActiveTintColor: theme.colors.primary.light,
         tabBarInactiveTintColor: theme.colors.state.inactive,
       }}
     >

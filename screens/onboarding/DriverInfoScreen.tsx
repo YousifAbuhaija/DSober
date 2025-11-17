@@ -168,11 +168,12 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
 
       if (error) throw error;
 
+      // Don't refresh user context here - it will cause navigation to re-evaluate
+      // profile completion and potentially kick user back to BasicInfo
+      // The user context will be refreshed when onboarding is complete
+      
       // Navigate to profile photo screen
       navigation.navigate('ProfilePhoto');
-
-      // Refresh user context after navigation (non-blocking)
-      refreshUser().catch(err => console.error('Error refreshing user:', err));
     } catch (error: any) {
       console.error('Error saving driver info:', error);
       Alert.alert('Error', error.message || 'Failed to save driver information. Please try again.');

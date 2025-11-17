@@ -15,6 +15,7 @@ export default function RootNavigator() {
   const { session, user, loading } = useAuth();
   const [hasSEPBaseline, setHasSEPBaseline] = useState(false);
   const [checkingBaseline, setCheckingBaseline] = useState(true);
+  const [recheckTrigger, setRecheckTrigger] = useState(0);
 
   // Check if user has completed SEP baseline
   useEffect(() => {
@@ -34,7 +35,9 @@ export default function RootNavigator() {
           .eq('user_id', user.id)
           .single();
 
-        setHasSEPBaseline(!!data && !error);
+        const hasBaseline = !!data && !error;
+        console.log('SEP baseline check:', { hasBaseline, userId: user.id });
+        setHasSEPBaseline(hasBaseline);
       } catch (error) {
         console.error('Error checking SEP baseline:', error);
         setHasSEPBaseline(false);
@@ -44,7 +47,16 @@ export default function RootNavigator() {
     };
 
     checkSEPBaseline();
-  }, [user?.id, user?.name, user?.groupId, user?.carMake]); // Re-check when user data changes
+  }, [user?.id, recheckTrigger]); // Re-check when user ID changes or manual trigger
+  
+  // Listen for when all onboarding fields are filled to trigger a re-check
+  useEffect(() => {
+    if (user?.name && user?.groupId && !hasSEPBaseline) {
+      // User has completed basic onboarding steps, trigger SEP baseline re-check
+      console.log('Onboarding fields complete, triggering SEP baseline re-check');
+      setRecheckTrigger(prev => prev + 1);
+    }
+  }, [user?.name, user?.groupId, hasSEPBaseline]);
 
   // Authenticated - check if profile is complete
   // Profile is complete when:
@@ -73,7 +85,7 @@ export default function RootNavigator() {
     });
     
     return complete;
-  }, [user, user?.name, user?.groupId, user?.isDD, user?.carMake, user?.carModel, user?.carPlate, hasSEPBaseline]);
+  }, [user?.name, user?.groupId, user?.isDD, user?.carMake, user?.carModel, user?.carPlate, hasSEPBaseline]);
 
   // Show loading screen while checking auth state or SEP baseline
   if (loading || checkingBaseline) {

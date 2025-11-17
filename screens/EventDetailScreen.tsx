@@ -70,10 +70,11 @@ export default function EventDetailScreen() {
   }, [eventId]);
 
   // Refresh data when screen comes into focus (e.g., after SEP verification)
+  // Fetch event details when screen comes into focus
+  // Note: We don't need to call refreshUser() here because AuthContext
+  // has a real-time subscription that automatically updates user data
   useFocusEffect(
     React.useCallback(() => {
-      // Refresh user data to get latest dd_status
-      refreshUser();
       fetchEventDetails();
     }, [eventId])
   );

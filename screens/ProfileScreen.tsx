@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Group, SEPBaseline } from '../types/database.types';
+import { theme } from '../theme/colors';
 
 export default function ProfileScreen() {
   const { user, signOut, refreshUser } = useAuth();
@@ -73,14 +74,13 @@ export default function ProfileScreen() {
     }
   };
 
-  // Refresh user data when screen comes into focus
+  // Fetch additional data when screen comes into focus
+  // Note: We don't need to call refreshUser() here because AuthContext
+  // has a real-time subscription that automatically updates user data
+  // when critical fields (dd_status, role, is_dd) change
   useFocusEffect(
     React.useCallback(() => {
-      const refresh = async () => {
-        await refreshUser();
-        await fetchAdditionalData();
-      };
-      refresh();
+      fetchAdditionalData();
     }, [user?.id])
   );
 
@@ -155,7 +155,7 @@ export default function ProfileScreen() {
   if (!user || loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -201,11 +201,11 @@ export default function ProfileScreen() {
           <Text style={styles.infoLabel}>Role</Text>
           <View style={[
             styles.roleBadge,
-            { backgroundColor: user.role === 'admin' ? '#E8F5E9' : '#E3F2FD' }
+            { backgroundColor: user.role === 'admin' ? theme.colors.functional.info : theme.colors.primary.light }
           ]}>
             <Text style={[
               styles.roleBadgeText,
-              { color: user.role === 'admin' ? '#2E7D32' : '#1565C0' }
+              { color: theme.colors.text.onPrimary }
             ]}>
               {user.role === 'admin' ? '🛡️ Admin' : '👤 Member'}
             </Text>
@@ -218,13 +218,13 @@ export default function ProfileScreen() {
             <View style={[
               styles.statusBadge,
               { 
-                backgroundColor: user.ddStatus === 'revoked' ? '#FFEBEE' : '#E8F5E9'
+                backgroundColor: user.ddStatus === 'revoked' ? theme.colors.functional.error : theme.colors.functional.success
               }
             ]}>
               <Text style={[
                 styles.statusBadgeText,
                 { 
-                  color: user.ddStatus === 'revoked' ? '#C62828' : '#2E7D32'
+                  color: theme.colors.text.onPrimary
                 }
               ]}>
                 {user.ddStatus === 'revoked' ? '⚠️ Revoked' : '✓ Active DD'}
@@ -294,7 +294,7 @@ export default function ProfileScreen() {
         disabled={loggingOut}
       >
         {loggingOut ? (
-          <ActivityIndicator color="#FF3B30" />
+          <ActivityIndicator color={theme.colors.functional.error} />
         ) : (
           <Text style={styles.logoutButtonText}>Log Out</Text>
         )}
@@ -319,7 +319,7 @@ export default function ProfileScreen() {
               value={editCarMake}
               onChangeText={setEditCarMake}
               placeholder="e.g., Toyota"
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={theme.colors.text.tertiary}
             />
             
             <Text style={styles.inputLabel}>Car Model</Text>
@@ -328,7 +328,7 @@ export default function ProfileScreen() {
               value={editCarModel}
               onChangeText={setEditCarModel}
               placeholder="e.g., Camry"
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={theme.colors.text.tertiary}
             />
             
             <Text style={styles.inputLabel}>License Plate</Text>
@@ -337,7 +337,7 @@ export default function ProfileScreen() {
               value={editCarPlate}
               onChangeText={setEditCarPlate}
               placeholder="e.g., ABC123"
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={theme.colors.text.tertiary}
               autoCapitalize="characters"
             />
             
@@ -356,7 +356,7 @@ export default function ProfileScreen() {
                 disabled={saving}
               >
                 {saving ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={theme.colors.text.onPrimary} />
                 ) : (
                   <Text style={styles.saveButtonText}>Save</Text>
                 )}
@@ -372,7 +372,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     padding: 16,
@@ -381,10 +381,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -410,36 +410,36 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: theme.colors.background.input,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.primary.main,
   },
   avatarText: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   userName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     textAlign: 'center',
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 16,
   },
   sectionDescription: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
     marginBottom: 12,
     marginTop: -8,
   },
@@ -453,18 +453,18 @@ const styles = StyleSheet.create({
   subsectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   editButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 6,
   },
   editButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   infoRow: {
     flexDirection: 'row',
@@ -474,12 +474,12 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   infoValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   roleBadge: {
     paddingHorizontal: 12,
@@ -501,16 +501,16 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: theme.colors.border.default,
     marginVertical: 12,
   },
   logoutButton: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FF3B30',
+    borderColor: theme.colors.functional.error,
     marginBottom: 16,
     minHeight: 50,
     justifyContent: 'center',
@@ -518,11 +518,11 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF3B30',
+    color: theme.colors.functional.error,
   },
   versionText: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 20,
     width: '100%',
@@ -543,23 +543,25 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 20,
     textAlign: 'center',
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
     marginTop: 12,
   },
   input: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#000',
+    color: theme.colors.text.primary,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -576,19 +578,21 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   cancelButton: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   saveButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
   },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
 });

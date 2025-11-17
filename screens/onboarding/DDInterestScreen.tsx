@@ -45,7 +45,11 @@ export default function DDInterestScreen({ navigation }: DDInterestScreenProps) 
 
       if (error) throw error;
 
-      // Navigate based on DD selection first
+      // Don't refresh user context here - it will cause navigation to re-evaluate
+      // profile completion and potentially kick user back to BasicInfo
+      // The user context will be refreshed when onboarding is complete
+      
+      // Navigate based on DD selection
       if (isDD) {
         // If user wants to be a DD, go to driver info screen
         navigation.navigate('DriverInfo');
@@ -53,9 +57,6 @@ export default function DDInterestScreen({ navigation }: DDInterestScreenProps) 
         // If not a DD, go to SEP baseline
         navigation.navigate('SEPReaction', { mode: 'baseline' });
       }
-
-      // Refresh user context after navigation (non-blocking)
-      refreshUser().catch(err => console.error('Error refreshing user:', err));
     } catch (error: any) {
       console.error('Error saving DD preference:', error);
       Alert.alert('Error', error.message || 'Failed to save preference. Please try again.');

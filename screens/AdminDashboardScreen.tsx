@@ -14,6 +14,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { DDRequest, Event, User, AdminAlert, SEPAttempt, SEPBaseline } from '../types/database.types';
+import { theme } from '../theme/colors';
 
 interface DDRequestWithDetails extends DDRequest {
   user: User;
@@ -608,7 +609,7 @@ export default function AdminDashboardScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -673,23 +674,23 @@ export default function AdminDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   scrollContent: {
     paddingBottom: 16,
   },
   quickActionsSection: {
     padding: 16,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   quickActionButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -708,14 +709,14 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   sectionHeader: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: theme.colors.border.default,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -723,10 +724,10 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   badge: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -735,18 +736,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeWarning: {
-    backgroundColor: '#FF9500',
+    backgroundColor: theme.colors.functional.warning,
   },
   badgeText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   sectionContent: {
     padding: 16,
   },
   requestCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -765,26 +766,26 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   requestTime: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
   },
   eventName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   eventDateTime: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
   },
   carInfo: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 12,
   },
   actionButtons: {
@@ -800,10 +801,10 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   approveButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: theme.colors.functional.success,
   },
   rejectButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: theme.colors.functional.error,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -811,7 +812,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   emptyContainer: {
     flex: 1,
@@ -820,7 +821,7 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 32,
     alignItems: 'center',
@@ -837,23 +838,23 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
     lineHeight: 20,
   },
   alertCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#FF9500',
+    borderLeftColor: theme.colors.functional.warning,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -869,20 +870,20 @@ const styles = StyleSheet.create({
   alertTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF9500',
+    color: theme.colors.functional.warning,
   },
   alertTime: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
   },
   alertInfo: {
     marginBottom: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: theme.colors.border.default,
   },
   metricsContainer: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
@@ -890,7 +891,7 @@ const styles = StyleSheet.create({
   metricsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   metricRow: {
@@ -899,7 +900,7 @@ const styles = StyleSheet.create({
   metricLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 4,
   },
   metricValues: {
@@ -909,20 +910,20 @@ const styles = StyleSheet.create({
   },
   baselineValue: {
     fontSize: 13,
-    color: '#34C759',
+    color: theme.colors.functional.success,
   },
   attemptValue: {
     fontSize: 13,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   failedValue: {
-    color: '#FF3B30',
+    color: theme.colors.functional.error,
     fontWeight: '600',
   },
   reinstateButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
   },
   revokeButton: {
-    backgroundColor: '#8E8E93',
+    backgroundColor: theme.colors.state.inactive,
   },
 });

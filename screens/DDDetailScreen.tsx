@@ -19,6 +19,7 @@ import { supabase } from '../lib/supabase';
 import { User, SEPBaseline, RideRequest } from '../types/database.types';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentLocation } from '../utils/location';
+import { theme } from '../theme/colors';
 
 type DDsStackParamList = {
   DDsList: undefined;
@@ -268,7 +269,7 @@ export default function DDDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -529,7 +530,7 @@ export default function DDDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   contentContainer: {
     paddingBottom: 32,
@@ -538,22 +539,22 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
     paddingHorizontal: 32,
   },
   errorText: {
     fontSize: 16,
-    color: '#D32F2F',
+    color: theme.colors.functional.error,
     textAlign: 'center',
   },
   photoSection: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     paddingTop: 24,
     paddingBottom: 16,
     paddingHorizontal: 16,
@@ -561,7 +562,7 @@ const styles = StyleSheet.create({
   photoSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 16,
@@ -574,18 +575,18 @@ const styles = StyleSheet.create({
   photoLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   photo: {
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: theme.colors.background.input,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.primary.main,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -594,7 +595,7 @@ const styles = StyleSheet.create({
   },
   photoCaption: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -602,32 +603,32 @@ const styles = StyleSheet.create({
     width: 192,
     height: 192,
     borderRadius: 96,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 80,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   nameContainer: {
     alignItems: 'center',
     paddingVertical: 20,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: theme.colors.border.default,
   },
   name: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   nameSubtitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#007AFF',
+    color: theme.colors.primary.light,
   },
   section: {
     marginTop: 24,
@@ -636,11 +637,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -658,41 +659,41 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   infoValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   noInfoText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     fontStyle: 'italic',
     textAlign: 'center',
   },
   contactText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     lineHeight: 20,
   },
   noticeContainer: {
     marginTop: 24,
     marginHorizontal: 16,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#90CAF9',
+    borderColor: theme.colors.border.default,
   },
   noticeText: {
     fontSize: 14,
-    color: '#1976D2',
+    color: theme.colors.text.secondary,
     lineHeight: 20,
     textAlign: 'center',
   },
   callButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: theme.colors.functional.success,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -705,7 +706,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   callButtonDisabled: {
-    backgroundColor: '#E5E5EA',
+    backgroundColor: theme.colors.state.disabled,
   },
   callButtonIcon: {
     fontSize: 24,
@@ -714,10 +715,10 @@ const styles = StyleSheet.create({
   callButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   requestRideButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -736,33 +737,33 @@ const styles = StyleSheet.create({
   requestRideButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   requestStatusCard: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#90CAF9',
+    borderColor: theme.colors.border.default,
   },
   requestStatusTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1976D2',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   requestStatusText: {
     fontSize: 16,
-    color: '#1976D2',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   requestStatusDetail: {
     fontSize: 14,
-    color: '#1976D2',
+    color: theme.colors.text.secondary,
     fontStyle: 'italic',
   },
   viewStatusButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.secondary.main,
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
@@ -771,17 +772,17 @@ const styles = StyleSheet.create({
   viewStatusButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onSecondary,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -795,26 +796,26 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   modalSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 20,
     textAlign: 'center',
   },
   modalInput: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#000',
+    color: theme.colors.text.primary,
     minHeight: 80,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: theme.colors.border.default,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -828,22 +829,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalButtonCancel: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
   },
   modalButtonConfirm: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
   },
   modalButtonDisabled: {
-    backgroundColor: '#E5E5EA',
+    backgroundColor: theme.colors.state.disabled,
   },
   modalButtonTextCancel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   modalButtonTextConfirm: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
 });

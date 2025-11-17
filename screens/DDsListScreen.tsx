@@ -19,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Event, DDSession, User } from '../types/database.types';
 import { calculateDistance, getCurrentLocation } from '../utils/location';
 import { updateEventStatusesToActive } from '../utils/eventStatus';
+import { theme } from '../theme/colors';
 
 type DDsStackParamList = {
   DDsList: undefined;
@@ -319,7 +320,7 @@ export default function DDsListScreen() {
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -387,24 +388,24 @@ export default function DDsListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   selectorContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: theme.colors.border.default,
   },
   selectorLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   eventScroll: {
@@ -414,32 +415,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: theme.colors.border.default,
   },
   eventChipSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
+    borderColor: theme.colors.primary.main,
   },
   eventChipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#000',
+    color: theme.colors.text.secondary,
   },
   eventChipTextSelected: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   errorBanner: {
-    backgroundColor: '#FFE5E5',
+    backgroundColor: theme.colors.functional.error,
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#FFCCCC',
+    borderBottomColor: theme.colors.border.error,
   },
   errorText: {
     fontSize: 12,
-    color: '#D32F2F',
+    color: theme.colors.text.primary,
     textAlign: 'center',
   },
   list: {
@@ -449,7 +450,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   ddCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -470,17 +471,17 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: theme.colors.primary.light,
   },
   avatarText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   ddInfo: {
     flex: 1,
@@ -488,17 +489,17 @@ const styles = StyleSheet.create({
   ddName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   carInfo: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 2,
   },
   carPlate: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   distanceContainer: {
     alignItems: 'center',
@@ -507,11 +508,11 @@ const styles = StyleSheet.create({
   distanceText: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#007AFF',
+    color: theme.colors.primary.main,
   },
   distanceUnit: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
   },
   emptyContainer: {
     flex: 1,
@@ -522,27 +523,27 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
   },
   callButtonSmall: {
-    backgroundColor: '#34C759',
+    backgroundColor: theme.colors.functional.success,
     paddingVertical: 12,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
+    borderTopColor: theme.colors.border.default,
   },
   callButtonSmallDisabled: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.state.disabled,
   },
   callButtonSmallIcon: {
     fontSize: 18,
@@ -551,6 +552,6 @@ const styles = StyleSheet.create({
   callButtonSmallText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
 });

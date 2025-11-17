@@ -15,6 +15,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { RideRequest, User } from '../types/database.types';
+import { theme } from '../theme/colors';
 
 type EventsStackParamList = {
   EventDetail: { eventId: string };
@@ -242,7 +243,7 @@ export default function RideStatusScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -258,28 +259,28 @@ export default function RideStatusScreen() {
           icon: '⏳',
           title: 'Request Pending',
           message: 'Your ride request is waiting for the driver to accept.',
-          color: '#FF9500',
+          color: theme.colors.functional.warning,
         };
       case 'accepted':
         return {
           icon: '✅',
           title: 'Request Accepted',
           message: 'Your driver has accepted your request and will pick you up soon.',
-          color: '#34C759',
+          color: theme.colors.functional.success,
         };
       case 'picked_up':
         return {
           icon: '🚗',
           title: 'On the Way',
           message: 'Your driver has picked you up and is taking you to your destination.',
-          color: '#007AFF',
+          color: theme.colors.primary.main,
         };
       default:
         return {
           icon: '❓',
           title: 'Unknown Status',
           message: 'Unable to determine ride status.',
-          color: '#8E8E93',
+          color: theme.colors.text.tertiary,
         };
     }
   };
@@ -382,7 +383,7 @@ export default function RideStatusScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     padding: 16,
@@ -391,10 +392,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   statusCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
@@ -413,13 +414,13 @@ const styles = StyleSheet.create({
   statusTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   statusMessage: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -429,11 +430,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -450,11 +451,11 @@ const styles = StyleSheet.create({
   },
   pickupText: {
     fontSize: 16,
-    color: '#000',
+    color: theme.colors.text.primary,
     flex: 1,
   },
   driverCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -470,7 +471,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -478,7 +479,7 @@ const styles = StyleSheet.create({
   driverPhotoText: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   driverInfo: {
     flex: 1,
@@ -486,20 +487,20 @@ const styles = StyleSheet.create({
   driverName: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   carInfo: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 2,
   },
   carPlate: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   callButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: theme.colors.functional.success,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -518,16 +519,16 @@ const styles = StyleSheet.create({
   callButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   cancelButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: theme.colors.functional.error,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-    shadowColor: '#FF3B30',
+    shadowColor: theme.colors.functional.error,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -536,13 +537,15 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
   },
   infoIcon: {
     fontSize: 20,
@@ -551,7 +554,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#1565C0',
+    color: theme.colors.text.secondary,
     lineHeight: 20,
   },
 });

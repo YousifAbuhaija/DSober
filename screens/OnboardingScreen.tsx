@@ -1,5 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import { theme } from '../theme/colors';
 import BasicInfoScreen from './onboarding/BasicInfoScreen';
 import GroupJoinScreen from './onboarding/GroupJoinScreen';
 import DDInterestScreen from './onboarding/DDInterestScreen';
@@ -46,7 +47,13 @@ export default function OnboardingScreen() {
     <Stack.Navigator
       screenOptions={{
         headerShown: true,
-        headerTintColor: '#007AFF',
+        headerStyle: {
+          backgroundColor: theme.colors.background.primary,
+        },
+        headerTintColor: theme.colors.text.primary,
+        headerTitleStyle: {
+          fontWeight: '600',
+        },
       }}
     >
       <Stack.Screen

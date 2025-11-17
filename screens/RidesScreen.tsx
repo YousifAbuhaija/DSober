@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { RideRequest, User, DDSession, Event } from '../types/database.types';
 import { calculateDistance } from '../utils/location';
+import { theme } from '../theme/colors';
 
 type RidesStackParamList = {
   RidesMain: undefined;
@@ -42,11 +43,13 @@ export default function RidesScreen() {
   const [myRideDD, setMyRideDD] = useState<User | null>(null);
   const [migrationError, setMigrationError] = useState(false);
 
+  // Fetch data when screen comes into focus
+  // Note: We don't need to call refreshUser() here because AuthContext
+  // has a real-time subscription that automatically updates user data
   useFocusEffect(
     React.useCallback(() => {
-      refreshUser();
       fetchData();
-    }, [user])
+    }, [user?.id])
   );
 
   const fetchData = async () => {
@@ -355,7 +358,7 @@ export default function RidesScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -438,7 +441,7 @@ export default function RidesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   content: {
     paddingBottom: 32,
@@ -447,23 +450,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: theme.colors.border.default,
   },
   headerTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   section: {
     padding: 16,
@@ -471,55 +474,57 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   activeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.colors.background.elevated,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     alignSelf: 'flex-start',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.functional.success,
   },
   activeDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.functional.success,
     marginRight: 8,
   },
   activeBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2E7D32',
+    color: theme.colors.functional.success,
     letterSpacing: 1,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   cardSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 16,
   },
   notificationBadge: {
-    backgroundColor: '#FF9500',
+    backgroundColor: theme.colors.functional.warning,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -528,11 +533,11 @@ const styles = StyleSheet.create({
   notificationText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onSecondary,
     textAlign: 'center',
   },
   primaryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -540,29 +545,29 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   secondaryButton: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: theme.colors.border.default,
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: theme.colors.primary.main,
   },
   emptyCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 32,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
@@ -573,24 +578,24 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
   },
   warningCard: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 32,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FF9500',
+    borderColor: theme.colors.functional.warning,
   },
   warningIcon: {
     fontSize: 64,
@@ -599,23 +604,23 @@ const styles = StyleSheet.create({
   warningTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#E65100',
+    color: theme.colors.functional.warning,
     marginBottom: 8,
     textAlign: 'center',
   },
   warningText: {
     fontSize: 14,
-    color: '#E65100',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     lineHeight: 20,
   },
   ctaCard: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 32,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#90CAF9',
+    borderColor: theme.colors.primary.light,
   },
   ctaIcon: {
     fontSize: 64,
@@ -624,13 +629,13 @@ const styles = StyleSheet.create({
   ctaTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1565C0',
+    color: theme.colors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   ctaText: {
     fontSize: 14,
-    color: '#1565C0',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
@@ -647,31 +652,31 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   driverName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   carInfo: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 4,
   },
   pickupInfo: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 16,
   },
   errorCard: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 24,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FF9500',
+    borderColor: theme.colors.functional.error,
   },
   errorIcon: {
     fontSize: 64,
@@ -680,37 +685,37 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#E65100',
+    color: theme.colors.functional.error,
     marginBottom: 12,
     textAlign: 'center',
   },
   errorText: {
     fontSize: 16,
-    color: '#E65100',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: 16,
     lineHeight: 22,
   },
   errorInstructions: {
     fontSize: 14,
-    color: '#E65100',
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
     marginBottom: 12,
     lineHeight: 20,
   },
   codeBlock: {
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
     width: '100%',
     borderWidth: 1,
-    borderColor: '#FF9500',
+    borderColor: theme.colors.border.default,
   },
   codeText: {
     fontSize: 12,
     fontFamily: 'monospace',
-    color: '#E65100',
+    color: theme.colors.text.secondary,
     textAlign: 'center',
   },
 });

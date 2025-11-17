@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "verify-db": "ts-node scripts/verify-database.ts",
+    "verify-accessibility": "ts-node scripts/verify-accessibility.ts",
     "reset-onboarding": "ts-node scripts/reset-onboarding.ts",
     "make-admin": "ts-node scripts/make-admin.ts",
     "cleanup-revoked": "ts-node scripts/cleanup-revoked-dd.ts",

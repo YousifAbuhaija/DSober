@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { RideRequest, User } from '../types/database.types';
 import { calculateDistance } from '../utils/location';
+import { theme } from '../theme/colors';
 
 type EventsStackParamList = {
   DDActiveSession: { sessionId: string };
@@ -455,7 +456,7 @@ export default function DDRideQueueScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -516,29 +517,29 @@ export default function DDRideQueueScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: theme.colors.border.default,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   list: {
     padding: 16,
@@ -547,7 +548,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   requestCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -572,7 +573,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -580,7 +581,7 @@ const styles = StyleSheet.create({
   avatarSmallText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   riderDetails: {
     flex: 1,
@@ -588,26 +589,28 @@ const styles = StyleSheet.create({
   riderName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 2,
   },
   requestTime: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
   },
   distanceBadge: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.background.input,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
   },
   distanceText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1976D2',
+    color: theme.colors.text.primary,
   },
   pickupInfo: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
@@ -615,19 +618,19 @@ const styles = StyleSheet.create({
   pickupLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.text.secondary,
     marginBottom: 4,
   },
   pickupText: {
     fontSize: 16,
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
   },
   callButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
@@ -636,10 +639,10 @@ const styles = StyleSheet.create({
   callButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   acceptButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: theme.colors.functional.success,
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
@@ -650,7 +653,7 @@ const styles = StyleSheet.create({
   acceptButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   emptyContainer: {
     flex: 1,
@@ -665,13 +668,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
   },
   scrollView: {
@@ -686,59 +689,63 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
     paddingHorizontal: 4,
   },
   acceptedCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#34C759',
+    borderLeftColor: theme.colors.functional.success,
   },
   activeRideCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
-    backgroundColor: '#E3F2FD',
+    borderLeftColor: theme.colors.primary.main,
+    backgroundColor: theme.colors.background.input,
   },
   statusBadge: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.colors.background.input,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     alignSelf: 'flex-start',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.functional.success,
   },
   statusBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2E7D32',
+    color: theme.colors.functional.success,
   },
   activeRideBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     alignSelf: 'flex-start',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.primary.main,
   },
   activeDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     marginRight: 8,
   },
   activeRideText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#007AFF',
+    color: theme.colors.primary.main,
   },
   avatarActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
   },
   pickupButton: {
-    backgroundColor: '#FF9500',
+    backgroundColor: theme.colors.functional.warning,
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
@@ -749,10 +756,10 @@ const styles = StyleSheet.create({
   pickupButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onSecondary,
   },
   completeButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.secondary.main,
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
@@ -763,6 +770,6 @@ const styles = StyleSheet.create({
   completeButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text.onSecondary,
   },
 });

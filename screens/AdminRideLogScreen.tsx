@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { RideRequest, User, Event } from '../types/database.types';
+import { theme } from '../theme/colors';
 
 interface RideRequestWithDetails extends RideRequest {
   riderName: string;
@@ -355,17 +356,17 @@ export default function AdminRideLogScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return '#FF9500';
+        return theme.colors.functional.warning;
       case 'accepted':
-        return '#34C759';
+        return theme.colors.functional.success;
       case 'picked_up':
-        return '#007AFF';
+        return theme.colors.primary.main;
       case 'completed':
-        return '#8E8E93';
+        return theme.colors.state.inactive;
       case 'cancelled':
-        return '#FF3B30';
+        return theme.colors.functional.error;
       default:
-        return '#8E8E93';
+        return theme.colors.state.inactive;
     }
   };
 
@@ -652,7 +653,7 @@ export default function AdminRideLogScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
       </View>
     );
   }
@@ -700,20 +701,20 @@ export default function AdminRideLogScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.primary,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: theme.colors.border.default,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -721,18 +722,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   filterToggle: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
   },
   filterToggleText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#007AFF',
+    color: theme.colors.primary.main,
   },
   scrollContent: {
     paddingBottom: 16,
@@ -744,7 +745,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -757,16 +758,16 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
   },
   filtersContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 16,
@@ -783,7 +784,7 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 8,
   },
   filterButtons: {
@@ -795,21 +796,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.background.input,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: theme.colors.border.default,
   },
   filterButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
+    borderColor: theme.colors.primary.main,
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   filterButtonTextActive: {
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   logSection: {
     paddingHorizontal: 16,
@@ -817,11 +818,11 @@ const styles = StyleSheet.create({
   logTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   rideCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -845,11 +846,11 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
   rideTime: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
   },
   rideInfo: {
     gap: 8,
@@ -861,11 +862,11 @@ const styles = StyleSheet.create({
   rideLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   rideValue: {
     fontSize: 14,
-    color: '#000',
+    color: theme.colors.text.primary,
     flex: 1,
     textAlign: 'right',
   },
@@ -880,13 +881,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: theme.colors.text.secondary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
     paddingHorizontal: 32,
     lineHeight: 20,
@@ -894,7 +895,7 @@ const styles = StyleSheet.create({
   ddStatsSection: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -908,23 +909,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: theme.colors.background.input,
   },
   sectionToggleTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   sectionToggleIcon: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   ddStatsContent: {
     padding: 16,
     gap: 12,
   },
   ddStatCard: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: theme.colors.background.input,
     borderRadius: 8,
     padding: 12,
   },
@@ -937,11 +938,11 @@ const styles = StyleSheet.create({
   ddStatName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     flex: 1,
   },
   ddStatBadge: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary.main,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -957,17 +958,17 @@ const styles = StyleSheet.create({
   },
   ddStatItemLabel: {
     fontSize: 13,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   ddStatItemValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
   },
   eventStatsSection: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background.elevated,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -979,7 +980,7 @@ const styles = StyleSheet.create({
   eventStatsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 12,
   },
   eventStatCard: {
@@ -988,7 +989,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: theme.colors.border.default,
   },
   eventStatInfo: {
     flex: 1,
@@ -996,15 +997,15 @@ const styles = StyleSheet.create({
   eventStatName: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#000',
+    color: theme.colors.text.primary,
     marginBottom: 2,
   },
   eventStatDate: {
     fontSize: 13,
-    color: '#666',
+    color: theme.colors.text.secondary,
   },
   eventStatBadge: {
-    backgroundColor: '#34C759',
+    backgroundColor: theme.colors.functional.success,
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1014,6 +1015,6 @@ const styles = StyleSheet.create({
   eventStatBadgeText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.onPrimary,
   },
 });
