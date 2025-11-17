@@ -21,6 +21,7 @@ web-build/
 
 # macOS
 .DS_Store
+*\ 2.*
 
 # IDE
 .vscode/
