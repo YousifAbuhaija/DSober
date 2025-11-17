@@ -26,8 +26,16 @@ web-build/
 .vscode/
 .idea/
 
-# Markdown
-*.md
-
-# SQL
+# Temporary SQL files (keep supabase/migrations/*.sql)
 *.sql
+!supabase/migrations/*.sql
+
+# Temporary markdown files (keep important docs)
+*_FIX.md
+*_OPTIMIZATION.md
+APPLY_*.md
+check_*.sql
+diagnose_*.sql
+emergency_*.sql
+test_*.sql
+unrevoke_*.sql
