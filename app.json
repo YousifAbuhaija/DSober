@@ -89,7 +89,9 @@
     "extra": {
       "eas": {
         "projectId": "78313b66-d12b-46c6-a668-da823b1e6119"
-      }
+      },
+      "supabaseUrl": "https://hdkvgrpshgswdgsqihpp.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhka3ZncnBzaGdzd2Rnc3FpaHBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNzQ2MzgsImV4cCI6MjA3ODc1MDYzOH0.I78QeYGgVfPpuEIKT9iA5RWI1Fnv9wRrtz-L6I9EeXU"
     },
     "owner": "yousifabuhaija"
   }

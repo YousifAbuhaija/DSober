@@ -73,7 +73,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let realtimeChannel: any = null;
     
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      // If there's an error getting the session (e.g., invalid refresh token), clear it
+      if (error) {
+        console.error('Error getting session:', error);
+        supabase.auth.signOut(); // Clear invalid session
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
       setSession(session);
       if (session?.user) {
         fetchUserProfile(session.user.id).then(setUser);

@@ -4,8 +4,8 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "verify-db": "ts-node scripts/verify-database.ts",
     "verify-accessibility": "ts-node scripts/verify-accessibility.ts",
@@ -44,6 +44,7 @@
     "react-native-url-polyfill": "^3.0.0"
   },
   "devDependencies": {
+    "@react-native-community/cli": "^20.0.2",
     "@types/react": "~19.1.0",
     "dotenv": "^16.6.1",
     "ts-node": "^10.9.2",

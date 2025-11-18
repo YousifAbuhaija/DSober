@@ -202,19 +202,36 @@ export default function EventDetailScreen() {
 
     setRequestingDD(true);
     try {
-      // Use upsert to handle case where a previous request exists (e.g., rejected request)
-      const { error } = await supabase
+      // Check if a request already exists
+      const { data: existingRequest } = await supabase
         .from('dd_requests')
-        .upsert({
-          event_id: eventId,
-          user_id: user.id,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-        }, {
-          onConflict: 'event_id,user_id',
-        });
+        .select('id, status')
+        .eq('event_id', eventId)
+        .eq('user_id', user.id)
+        .single();
 
-      if (error) throw error;
+      if (existingRequest) {
+        // Update existing request (e.g., resubmit after rejection)
+        const { error } = await supabase
+          .from('dd_requests')
+          .update({
+            status: 'pending',
+          })
+          .eq('id', existingRequest.id);
+
+        if (error) throw error;
+      } else {
+        // Create new request (this will trigger the admin notification)
+        const { error } = await supabase
+          .from('dd_requests')
+          .insert({
+            event_id: eventId,
+            user_id: user.id,
+            status: 'pending',
+          });
+
+        if (error) throw error;
+      }
 
       Alert.alert('Success', 'Your DD request has been submitted');
       fetchEventDetails();

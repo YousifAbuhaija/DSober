@@ -279,8 +279,6 @@ export default function AdminDashboardScreen() {
 
       // Remove from local state
       setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
-
-      Alert.alert('Success', `${request.user.name} has been approved as DD for ${request.event.name}`);
     } catch (error) {
       console.error('Error approving request:', error);
       Alert.alert('Error', 'Failed to approve request. Please try again.');
@@ -303,8 +301,6 @@ export default function AdminDashboardScreen() {
 
       // Remove from local state
       setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
-
-      Alert.alert('Request Rejected', `${request.user.name}'s request has been rejected`);
     } catch (error) {
       console.error('Error rejecting request:', error);
       Alert.alert('Error', 'Failed to reject request. Please try again.');

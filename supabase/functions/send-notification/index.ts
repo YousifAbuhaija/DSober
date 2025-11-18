@@ -329,6 +329,14 @@ function getNotificationTemplate(type: string): NotificationTemplate | null {
       buildBody: (data) => `You've been assigned as a designated driver for ${data.eventName || 'an event'}. Remember to start your session when ready.`,
       buildData: (data) => ({ ...data, screen: 'EventDetail' }),
     },
+    dd_request_created: {
+      type: 'dd_request_created',
+      priority: 'high',
+      sound: 'default',
+      buildTitle: (data) => '📋 New DD Request',
+      buildBody: (data) => `${data.userName || 'A user'} wants to be a DD for ${data.eventName || 'an event'}. Review their request.`,
+      buildData: (data) => ({ ...data, screen: 'EventDetail' }),
+    },
   };
 
   return templates[type] || null;
@@ -665,24 +673,7 @@ serve(async (req) => {
       );
     }
 
-    // Get device tokens for filtered recipients
-    const tokensByUser = await getDeviceTokens(supabase, filteredRecipientIds);
-
-    if (tokensByUser.size === 0) {
-      console.log('No active device tokens found for recipients');
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'No active devices found',
-          sent: 0 
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Found ${tokensByUser.size} users with active devices`);
-
-    // Build notification payload from template
+    // Build notification payload from template (do this before checking tokens)
     const payload = buildNotificationPayload(request.type, request.data);
     
     if (!payload) {
@@ -695,20 +686,39 @@ serve(async (req) => {
       );
     }
 
-    // Collect all tokens
-    const allTokens = Array.from(tokensByUser.values()).flat();
+    // Get device tokens for filtered recipients
+    const tokensByUser = await getDeviceTokens(supabase, filteredRecipientIds);
 
-    // Send to Expo Push API
-    console.log(`Sending ${allTokens.length} notifications via Expo Push API`);
-    const sendResults = await sendToExpoPush(allTokens, payload);
+    let sendResults: { token: string; ticket: ExpoPushTicket }[] = [];
+    let successCount = 0;
+    let failureCount = 0;
 
-    // Count successes and failures
-    const successCount = sendResults.filter(r => r.ticket.status === 'ok').length;
-    const failureCount = sendResults.filter(r => r.ticket.status === 'error').length;
+    if (tokensByUser.size === 0) {
+      console.log('No active device tokens found for recipients');
+      // Still log notifications to database even without active devices
+      // Users can see them when they log back in
+    } else {
+      console.log(`Found ${tokensByUser.size} users with active devices`);
 
-    console.log(`Sent ${successCount} notifications successfully, ${failureCount} failed`);
+      // Collect all tokens
+      const allTokens = Array.from(tokensByUser.values()).flat();
 
-    // Log notifications to database
+      // Send to Expo Push API
+      console.log(`Sending ${allTokens.length} notifications via Expo Push API`);
+      sendResults = await sendToExpoPush(allTokens, payload);
+
+      // Count successes and failures
+      successCount = sendResults.filter(r => r.ticket.status === 'ok').length;
+      failureCount = sendResults.filter(r => r.ticket.status === 'error').length;
+
+      console.log(`Sent ${successCount} notifications successfully, ${failureCount} failed`);
+
+      // Handle failures (deactivate invalid tokens)
+      await handleFailures(supabase, sendResults);
+    }
+
+    // ALWAYS log notifications to database, regardless of push delivery status
+    // This ensures users can see notifications when they log back in
     await logNotifications(
       supabase,
       filteredRecipientIds,
@@ -718,14 +728,11 @@ serve(async (req) => {
       tokensByUser
     );
 
-    // Handle failures (deactivate invalid tokens)
-    await handleFailures(supabase, sendResults);
-
     // Return results
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Notifications sent',
+        message: tokensByUser.size === 0 ? 'Notifications logged (no active devices)' : 'Notifications sent',
         recipients: filteredRecipientIds.length,
         sent: successCount,
         failed: failureCount,

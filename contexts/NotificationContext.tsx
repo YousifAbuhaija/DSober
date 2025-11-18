@@ -397,10 +397,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     });
 
     return () => {
-      if (notificationListener.current) {
+      // Only cleanup if removeNotificationSubscription exists (not in Expo Go)
+      if (notificationListener.current && Notifications.removeNotificationSubscription) {
         Notifications.removeNotificationSubscription(notificationListener.current);
       }
-      if (responseListener.current) {
+      if (responseListener.current && Notifications.removeNotificationSubscription) {
         Notifications.removeNotificationSubscription(responseListener.current);
       }
     };

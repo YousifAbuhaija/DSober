@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { theme } from '../theme';
@@ -90,8 +90,9 @@ export default function RootNavigator() {
   // Show loading screen while checking auth state or SEP baseline
   if (loading || checkingBaseline) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.primary.main }]}>
+        <Text style={{ fontSize: 48, fontWeight: 'bold', color: theme.colors.text.onPrimary, marginBottom: 20 }}>DSober</Text>
+        <ActivityIndicator size="large" color={theme.colors.secondary.main} />
       </View>
     );
   }
