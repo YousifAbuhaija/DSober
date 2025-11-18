@@ -1,0 +1,71 @@
+# ============================================================================
+# WARNING: THIS PROJECT USES SUPABASE CLOUD ONLY
+# ============================================================================
+# This config.toml is for local Supabase, but we DON'T use it.
+# The app connects to: https://hdkvgrpshgswdgsqihpp.supabase.co
+# 
+# DO NOT run: supabase start, supabase db reset, or local psql commands
+# See .supabase-config.md for proper workflow
+# ============================================================================
+
+# Supabase local development configuration (NOT USED)
+project_id = "DSober"
+
+[api]
+enabled = true
+port = 54421  # Changed to avoid conflict
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54422  # Changed to avoid conflict with other projects
+shadow_port = 54424  # Changed to avoid conflict
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+ip_version = "IPv4"
+
+[studio]
+enabled = true
+port = 54426  # Changed to avoid conflict
+api_url = "http://localhost"
+
+[inbucket]
+enabled = true
+port = 54427  # Changed to avoid conflict
+smtp_port = 54428  # Changed to avoid conflict
+pop3_port = 54429  # Changed to avoid conflict
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_manual_linking = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+
+
+[analytics]
+enabled = true
+port = 54430
+

@@ -83,6 +83,14 @@ export default function EventDetailScreen() {
     try {
       console.log('fetchEventDetails called for eventId:', eventId);
       
+      // Validate eventId before making any queries
+      if (!eventId || eventId === '') {
+        console.error('Invalid eventId:', eventId);
+        Alert.alert('Error', 'Invalid event ID. Please try again.');
+        navigation.goBack();
+        return;
+      }
+      
       // Reset user-specific state before fetching
       setUserDDRequest(null);
       setUserDDAssignment(null);

@@ -254,7 +254,13 @@ export default function RidesScreen() {
           </Text>
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => navigation.navigate('EventDetail' as any, { eventId: '' })}
+            onPress={() => {
+              // Navigate to the Events tab
+              const parent = navigation.getParent();
+              if (parent) {
+                parent.navigate('Events');
+              }
+            }}
           >
             <Text style={styles.secondaryButtonText}>Go to Events</Text>
           </TouchableOpacity>
@@ -341,14 +347,22 @@ export default function RidesScreen() {
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => {
-              Alert.alert(
-                'Become a DD',
-                'To become a DD, please contact your chapter admin. They can update your account and you\'ll need to provide vehicle information.',
-                [{ text: 'OK' }]
-              );
+              try {
+                navigation.navigate('DDUpgrade' as any, { 
+                  screen: 'DriverInfo',
+                  params: { mode: 'upgrade' }
+                });
+              } catch (error) {
+                console.error('Navigation error:', error);
+                Alert.alert(
+                  'Navigation Error',
+                  'Unable to open DD upgrade form. Please try again or restart the app.',
+                  [{ text: 'OK' }]
+                );
+              }
             }}
           >
-            <Text style={styles.primaryButtonText}>Learn More</Text>
+            <Text style={styles.primaryButtonText}>Get Started</Text>
           </TouchableOpacity>
         </View>
       </View>

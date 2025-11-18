@@ -6,6 +6,20 @@
 DROP FUNCTION IF EXISTS public.get_user_group_id() CASCADE;
 DROP FUNCTION IF EXISTS public.is_user_admin() CASCADE;
 
+-- Drop all existing policies (CASCADE from functions should have done this, but let's be explicit)
+DO $$ 
+DECLARE
+    r RECORD;
+BEGIN
+    -- Drop all policies on all tables
+    FOR r IN (SELECT schemaname, tablename, policyname 
+              FROM pg_policies 
+              WHERE schemaname = 'public') 
+    LOOP
+        EXECUTE 'DROP POLICY IF EXISTS "' || r.policyname || '" ON ' || r.schemaname || '.' || r.tablename;
+    END LOOP;
+END $$;
+
 -- Recreate with SECURITY DEFINER (original approach was correct)
 CREATE OR REPLACE FUNCTION public.get_user_group_id()
 RETURNS UUID

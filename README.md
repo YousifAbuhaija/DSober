@@ -31,7 +31,37 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ### 3. Set Up Database Schema
 
-Run the SQL scripts in your Supabase SQL editor to create the required tables and RLS policies. See the design document for the complete schema.
+**IMPORTANT: This project uses Supabase Cloud ONLY (no local database)**
+
+#### Database Configuration
+- **Project URL**: https://hdkvgrpshgswdgsqihpp.supabase.co
+- **Dashboard**: https://supabase.com/dashboard/project/hdkvgrpshgswdgsqihpp
+- See `.supabase-config.md` for detailed configuration info
+
+#### Applying Migrations
+1. Link to cloud project (first time only):
+   ```bash
+   ./scripts/db-helper.sh link
+   ```
+
+2. Push migrations to cloud:
+   ```bash
+   ./scripts/db-helper.sh push
+   ```
+
+3. Or manually via SQL Editor:
+   - Open: https://supabase.com/dashboard/project/hdkvgrpshgswdgsqihpp/sql/new
+   - Copy/paste SQL from migration files
+   - Click "Run"
+
+#### Useful Commands
+```bash
+./scripts/db-helper.sh status      # Check migration status
+./scripts/db-helper.sh dashboard   # Open Supabase Dashboard
+./scripts/db-helper.sh sql         # Open SQL Editor
+./scripts/db-helper.sh editor      # Open Table Editor
+./scripts/db-helper.sh check-users # Check users in database
+```
 
 ### 4. Run the Application
 

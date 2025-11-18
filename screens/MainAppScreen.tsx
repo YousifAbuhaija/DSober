@@ -1,8 +1,9 @@
-import React from 'react';
-import { Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Text, View, TouchableOpacity, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { theme } from '../theme';
 import EventsListScreen from './EventsListScreen';
 import EventDetailScreen from './EventDetailScreen';
@@ -12,6 +13,8 @@ import DDDetailScreen from './DDDetailScreen';
 import AdminDashboardScreen from './AdminDashboardScreen';
 import AdminRideLogScreen from './AdminRideLogScreen';
 import ProfileScreen from './ProfileScreen';
+import NotificationPreferencesScreen from './NotificationPreferencesScreen';
+import NotificationCenterScreen from './NotificationCenterScreen';
 import SEPReactionScreen from './onboarding/SEPReactionScreen';
 import SEPPhraseScreen from './onboarding/SEPPhraseScreen';
 import SEPSelfieScreen from './onboarding/SEPSelfieScreen';
@@ -20,19 +23,84 @@ import DDActiveSessionScreen from './DDActiveSessionScreen';
 import DDRideQueueScreen from './DDRideQueueScreen';
 import RideStatusScreen from './RideStatusScreen';
 import RidesScreen from './RidesScreen';
+import DDUpgradeNavigator from '../navigation/DDUpgradeNavigator';
 
 const Tab = createBottomTabNavigator();
+const MainStack = createStackNavigator();
 const EventsStack = createStackNavigator();
 const DDsStack = createStackNavigator();
 const RidesStack = createStackNavigator();
 const AdminStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 
+// Notification Bell Button Component
+function NotificationBellButton({ navigation }: any) {
+  const { getBadgeCount } = useNotifications();
+  const [badgeCount, setBadgeCount] = useState(0);
+
+  useEffect(() => {
+    // Update badge count periodically
+    const updateBadge = async () => {
+      const count = await getBadgeCount();
+      setBadgeCount(count);
+    };
+
+    updateBadge();
+    const interval = setInterval(updateBadge, 5000); // Update every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [getBadgeCount]);
+
+  return (
+    <TouchableOpacity
+      style={headerStyles.bellButton}
+      onPress={() => navigation.navigate('NotificationCenter')}
+      activeOpacity={0.7}
+    >
+      <Text style={headerStyles.bellIcon}>🔔</Text>
+      {badgeCount > 0 && (
+        <View style={headerStyles.badge}>
+          <Text style={headerStyles.badgeText}>
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+const headerStyles = StyleSheet.create({
+  bellButton: {
+    marginRight: 16,
+    position: 'relative',
+  },
+  bellIcon: {
+    fontSize: 24,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: theme.colors.functional.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: theme.colors.text.primary,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+});
+
 // Stack navigator for Events tab
 function EventsStackNavigator() {
   return (
     <EventsStack.Navigator
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         headerStyle: {
           backgroundColor: theme.colors.background.primary,
         },
@@ -40,7 +108,8 @@ function EventsStackNavigator() {
         headerTitleStyle: {
           fontWeight: '600',
         },
-      }}
+        headerRight: () => <NotificationBellButton navigation={navigation} />,
+      })}
     >
       <EventsStack.Screen 
         name="EventsList" 
@@ -56,6 +125,14 @@ function EventsStackNavigator() {
         name="CreateEvent" 
         component={CreateEventScreen}
         options={{ title: 'Create Event' }}
+      />
+      <EventsStack.Screen 
+        name="NotificationCenter" 
+        component={NotificationCenterScreen}
+        options={{ 
+          title: 'Notifications',
+          headerRight: undefined,
+        }}
       />
       <EventsStack.Screen 
         name="SEPReaction" 
@@ -104,7 +181,7 @@ function EventsStackNavigator() {
 function DDsStackNavigator() {
   return (
     <DDsStack.Navigator
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         headerStyle: {
           backgroundColor: theme.colors.background.primary,
         },
@@ -112,7 +189,8 @@ function DDsStackNavigator() {
         headerTitleStyle: {
           fontWeight: '600',
         },
-      }}
+        headerRight: () => <NotificationBellButton navigation={navigation} />,
+      })}
     >
       <DDsStack.Screen 
         name="DDsList" 
@@ -123,6 +201,14 @@ function DDsStackNavigator() {
         name="DDDetail" 
         component={DDDetailScreen}
         options={{ title: 'DD Details' }}
+      />
+      <DDsStack.Screen 
+        name="NotificationCenter" 
+        component={NotificationCenterScreen}
+        options={{ 
+          title: 'Notifications',
+          headerRight: undefined,
+        }}
       />
       <DDsStack.Screen 
         name="RideStatus" 
@@ -137,7 +223,7 @@ function DDsStackNavigator() {
 function RidesStackNavigator() {
   return (
     <RidesStack.Navigator
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         headerStyle: {
           backgroundColor: theme.colors.background.primary,
         },
@@ -145,7 +231,8 @@ function RidesStackNavigator() {
         headerTitleStyle: {
           fontWeight: '600',
         },
-      }}
+        headerRight: () => <NotificationBellButton navigation={navigation} />,
+      })}
     >
       <RidesStack.Screen 
         name="RidesMain" 
@@ -156,6 +243,14 @@ function RidesStackNavigator() {
         name="DDRideQueue" 
         component={DDRideQueueScreen}
         options={{ title: 'Ride Queue' }}
+      />
+      <RidesStack.Screen 
+        name="NotificationCenter" 
+        component={NotificationCenterScreen}
+        options={{ 
+          title: 'Notifications',
+          headerRight: undefined,
+        }}
       />
       <RidesStack.Screen 
         name="RideStatus" 
@@ -175,7 +270,7 @@ function RidesStackNavigator() {
 function AdminStackNavigator() {
   return (
     <AdminStack.Navigator
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         headerStyle: {
           backgroundColor: theme.colors.background.primary,
         },
@@ -183,7 +278,8 @@ function AdminStackNavigator() {
         headerTitleStyle: {
           fontWeight: '600',
         },
-      }}
+        headerRight: () => <NotificationBellButton navigation={navigation} />,
+      })}
     >
       <AdminStack.Screen 
         name="AdminDashboard" 
@@ -195,6 +291,14 @@ function AdminStackNavigator() {
         component={AdminRideLogScreen}
         options={{ title: 'Ride Activity Log' }}
       />
+      <AdminStack.Screen 
+        name="NotificationCenter" 
+        component={NotificationCenterScreen}
+        options={{ 
+          title: 'Notifications',
+          headerRight: undefined,
+        }}
+      />
     </AdminStack.Navigator>
   );
 }
@@ -203,7 +307,7 @@ function AdminStackNavigator() {
 function ProfileStackNavigator() {
   return (
     <ProfileStack.Navigator
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         headerStyle: {
           backgroundColor: theme.colors.background.primary,
         },
@@ -211,18 +315,33 @@ function ProfileStackNavigator() {
         headerTitleStyle: {
           fontWeight: '600',
         },
-      }}
+        headerRight: () => <NotificationBellButton navigation={navigation} />,
+      })}
     >
       <ProfileStack.Screen 
         name="ProfileMain" 
         component={ProfileScreen}
         options={{ title: 'Profile' }}
       />
+      <ProfileStack.Screen 
+        name="NotificationPreferences" 
+        component={NotificationPreferencesScreen}
+        options={{ title: 'Notification Settings' }}
+      />
+      <ProfileStack.Screen 
+        name="NotificationCenter" 
+        component={NotificationCenterScreen}
+        options={{ 
+          title: 'Notifications',
+          headerRight: undefined,
+        }}
+      />
     </ProfileStack.Navigator>
   );
 }
 
-export default function MainAppScreen() {
+// Tab Navigator component
+function TabNavigator() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
@@ -281,6 +400,26 @@ export default function MainAppScreen() {
         }}
       />
     </Tab.Navigator>
+  );
+}
+
+// Main App Screen with Stack Navigator for modals
+export default function MainAppScreen() {
+  return (
+    <MainStack.Navigator screenOptions={{ headerShown: false }}>
+      <MainStack.Screen 
+        name="MainTabs" 
+        component={TabNavigator}
+      />
+      <MainStack.Screen 
+        name="DDUpgrade" 
+        component={DDUpgradeNavigator}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+    </MainStack.Navigator>
   );
 }
 

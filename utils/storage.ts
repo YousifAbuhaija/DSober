@@ -15,13 +15,24 @@ export async function uploadImage(
   try {
     // Fetch the image as a blob
     const response = await fetch(uri);
+    
+    if (!response.ok) {
+      throw new Error('Failed to read image file. Please select a different image.');
+    }
+    
     const blob = await response.blob();
+    
+    // Validate blob size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (blob.size > maxSize) {
+      throw new Error('Image file is too large. Please select an image smaller than 10MB.');
+    }
     
     // Convert blob to array buffer
     const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as ArrayBuffer);
-      reader.onerror = reject;
+      reader.onerror = () => reject(new Error('Failed to process image file.'));
       reader.readAsArrayBuffer(blob);
     });
 
@@ -46,7 +57,18 @@ export async function uploadImage(
       });
 
     if (error) {
-      throw error;
+      console.error('Supabase storage error:', error);
+      
+      // Provide specific error messages based on error type
+      if (error.message.includes('not found')) {
+        throw new Error('Storage configuration error. Please contact support.');
+      } else if (error.message.includes('unauthorized') || error.message.includes('permission')) {
+        throw new Error('Permission denied. Please contact support.');
+      } else if (error.message.includes('network') || error.message.includes('timeout')) {
+        throw new Error('Network error. Please check your connection and try again.');
+      } else {
+        throw new Error(`Upload failed: ${error.message}`);
+      }
     }
 
     // Get public URL
@@ -54,10 +76,21 @@ export async function uploadImage(
       .from(bucket)
       .getPublicUrl(path);
 
+    if (!urlData?.publicUrl) {
+      throw new Error('Failed to generate image URL. Please try again.');
+    }
+
     return urlData.publicUrl;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error uploading image:', error);
-    throw new Error('Failed to upload image. Please try again.');
+    
+    // Re-throw with original message if it's already a custom error
+    if (error.message && error.message.includes('Please')) {
+      throw error;
+    }
+    
+    // Generic fallback error
+    throw new Error('Failed to upload image. Please check your connection and try again.');
   }
 }
 

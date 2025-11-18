@@ -9,6 +9,8 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Platform,
+  Linking,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,10 +20,16 @@ import { theme } from '../../theme/colors';
 
 interface DriverInfoScreenProps {
   navigation: any;
+  route?: {
+    params?: {
+      mode?: 'onboarding' | 'upgrade';
+    };
+  };
 }
 
-export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) {
+export default function DriverInfoScreen({ navigation, route }: DriverInfoScreenProps) {
   const { session, refreshUser, user } = useAuth();
+  const mode = route?.params?.mode;
   const [carMake, setCarMake] = useState('');
   const [carModel, setCarModel] = useState('');
   const [carPlate, setCarPlate] = useState('');
@@ -69,7 +77,19 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
     if (status !== 'granted') {
       Alert.alert(
         'Permission Required',
-        'Please grant photo library access to upload your license photo.'
+        'Photo library access is needed to upload your driver\'s license. Please enable it in your device Settings > DSober > Photos.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => {
+            // On iOS, this will open the app settings
+            // On Android, it will open the app info page
+            if (Platform.OS === 'ios') {
+              Linking.openURL('app-settings:');
+            } else {
+              Linking.openSettings();
+            }
+          }}
+        ]
       );
       return false;
     }
@@ -89,28 +109,59 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
       });
 
       if (!result.canceled && result.assets[0]) {
-        setLicensePhotoUri(result.assets[0].uri);
+        const asset = result.assets[0];
+        
+        // Validate image format
+        const validFormats = ['jpg', 'jpeg', 'png'];
+        const fileExtension = asset.uri.split('.').pop()?.toLowerCase();
+        
+        if (fileExtension && !validFormats.includes(fileExtension)) {
+          Alert.alert(
+            'Invalid Image Format',
+            'Please select a JPG or PNG image file. Other formats are not supported.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+        
+        setLicensePhotoUri(asset.uri);
       }
     } catch (error: any) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to select image. Please try again.');
+      Alert.alert(
+        'Image Selection Failed',
+        'Unable to select image. Please check your photo library and try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
   const handleNext = async () => {
-    // Validate required fields
+    // Validate required fields with specific error messages
     if (!carMake.trim()) {
-      Alert.alert('Error', 'Please enter your car make');
+      Alert.alert(
+        'Car Make Required',
+        'Please enter your vehicle\'s make (e.g., Toyota, Honda, Ford).',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
     if (!carModel.trim()) {
-      Alert.alert('Error', 'Please enter your car model');
+      Alert.alert(
+        'Car Model Required',
+        'Please enter your vehicle\'s model (e.g., Camry, Civic, F-150).',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
     if (!carPlate.trim()) {
-      Alert.alert('Error', 'Please enter your license plate');
+      Alert.alert(
+        'License Plate Required',
+        'Please enter your vehicle\'s license plate number.',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
@@ -118,13 +169,18 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
     if (phoneNumber.trim() && !validatePhoneNumber(phoneNumber)) {
       Alert.alert(
         'Invalid Phone Number',
-        'Please enter a valid phone number (10 digits for US numbers)'
+        'Please enter a valid phone number:\n• 10 digits for US numbers (e.g., 5551234567)\n• 11 digits starting with 1 for international format',
+        [{ text: 'OK' }]
       );
       return;
     }
 
     if (!licensePhotoUri) {
-      Alert.alert('Error', 'Please upload a photo of your driver\'s license');
+      Alert.alert(
+        'License Photo Required',
+        'Please upload a clear photo of your driver\'s license for verification.',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
@@ -132,16 +188,35 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
 
     try {
       if (!session?.user?.id) {
-        throw new Error('No user session found');
+        throw new Error('Session expired. Please log in again.');
       }
 
       // Upload license photo to Supabase storage
       setUploadingPhoto(true);
-      const licensePhotoUrl = await uploadImage(
-        licensePhotoUri,
-        'license-photos',
-        `${session.user.id}/license.jpg`
-      );
+      let licensePhotoUrl: string;
+      
+      try {
+        licensePhotoUrl = await uploadImage(
+          licensePhotoUri,
+          'license-photos',
+          `${session.user.id}/license.jpg`
+        );
+      } catch (uploadError: any) {
+        console.error('Upload error:', uploadError);
+        setUploadingPhoto(false);
+        setLoading(false);
+        
+        Alert.alert(
+          'Upload Failed',
+          'Failed to upload your license photo. Please check your internet connection and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => handleNext() }
+          ]
+        );
+        return;
+      }
+      
       setUploadingPhoto(false);
 
       // Format phone number before saving (if provided)
@@ -161,22 +236,62 @@ export default function DriverInfoScreen({ navigation }: DriverInfoScreenProps) 
         updateData.phone_number = formattedPhone;
       }
 
+      // If in upgrade mode, also update DD status
+      if (mode === 'upgrade') {
+        updateData.is_dd = true;
+        updateData.dd_status = 'active';
+      }
+
       const { error } = await supabase
         .from('users')
         .update(updateData)
         .eq('id', session.user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database update error:', error);
+        throw new Error('Failed to update your account. Please try again or contact support if the problem persists.');
+      }
 
-      // Don't refresh user context here - it will cause navigation to re-evaluate
-      // profile completion and potentially kick user back to BasicInfo
-      // The user context will be refreshed when onboarding is complete
-      
-      // Navigate to profile photo screen
-      navigation.navigate('ProfilePhoto');
+      // Handle navigation based on mode
+      if (mode === 'upgrade') {
+        // Refresh user context to reflect DD status change
+        try {
+          await refreshUser();
+        } catch (refreshError) {
+          console.error('Refresh error:', refreshError);
+          // Continue anyway - the real-time subscription will update the user
+        }
+        
+        // Show success message and navigate back
+        Alert.alert(
+          'Success!',
+          'You are now a designated driver! You can start DD sessions from events.',
+          [{ 
+            text: 'OK', 
+            onPress: () => navigation.goBack() 
+          }]
+        );
+      } else {
+        // Don't refresh user context here - it will cause navigation to re-evaluate
+        // profile completion and potentially kick user back to BasicInfo
+        // The user context will be refreshed when onboarding is complete
+        
+        // Navigate to profile photo screen
+        navigation.navigate('ProfilePhoto');
+      }
     } catch (error: any) {
       console.error('Error saving driver info:', error);
-      Alert.alert('Error', error.message || 'Failed to save driver information. Please try again.');
+      
+      const errorMessage = error.message || 'An unexpected error occurred while saving your information.';
+      
+      Alert.alert(
+        'Save Failed',
+        errorMessage,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: () => handleNext() }
+        ]
+      );
     } finally {
       setLoading(false);
       setUploadingPhoto(false);

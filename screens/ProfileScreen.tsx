@@ -11,13 +11,14 @@ import {
   TextInput,
   Image,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Group, SEPBaseline } from '../types/database.types';
 import { theme } from '../theme/colors';
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
   const { user, signOut, refreshUser } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
   const [groupName, setGroupName] = useState<string | null>(null);
@@ -287,6 +288,22 @@ export default function ProfileScreen() {
         </View>
       )}
 
+      {/* Notification Settings Button */}
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate('NotificationPreferences' as never)}
+      >
+        <View style={styles.settingsButtonContent}>
+          <View>
+            <Text style={styles.settingsButtonTitle}>🔔 Notification Settings</Text>
+            <Text style={styles.settingsButtonDescription}>
+              Manage your notification preferences
+            </Text>
+          </View>
+          <Text style={styles.settingsButtonArrow}>›</Text>
+        </View>
+      </TouchableOpacity>
+
       {/* Logout Button */}
       <TouchableOpacity
         style={styles.logoutButton}
@@ -503,6 +520,37 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: theme.colors.border.default,
     marginVertical: 12,
+  },
+  settingsButton: {
+    backgroundColor: theme.colors.background.elevated,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  settingsButtonContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  settingsButtonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: 4,
+  },
+  settingsButtonDescription: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+  },
+  settingsButtonArrow: {
+    fontSize: 32,
+    color: theme.colors.text.tertiary,
+    fontWeight: '300',
   },
   logoutButton: {
     backgroundColor: theme.colors.background.elevated,

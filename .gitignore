@@ -30,6 +30,12 @@ web-build/
 # Temporary SQL files (keep supabase/migrations/*.sql)
 *.sql
 !supabase/migrations/*.sql
+!APPLY_TO_CLOUD.sql
+
+# Local Supabase (we use cloud only)
+.supabase/
+supabase/.branches/
+supabase/.temp/
 
 # Temporary markdown files (keep important docs)
 *_FIX.md

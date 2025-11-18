@@ -32,7 +32,14 @@ export default function EventsListScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchEvents = async () => {
-    if (!user?.groupId) return;
+    console.log('fetchEvents called, user.groupId:', user?.groupId);
+    
+    if (!user?.groupId) {
+      console.log('No groupId, skipping fetch');
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
 
     try {
       // First, auto-update any upcoming events that should now be active
@@ -45,6 +52,8 @@ export default function EventsListScreen() {
         .order('date_time', { ascending: true });
 
       if (error) throw error;
+
+      console.log('Fetched events:', data?.length || 0);
 
       // Map snake_case to camelCase
       const mappedEvents: Event[] = (data || []).map((event) => ({
@@ -59,6 +68,7 @@ export default function EventsListScreen() {
         createdAt: new Date(event.created_at),
       }));
 
+      console.log('Mapped events with IDs:', mappedEvents.map(e => e.id));
       setEvents(mappedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -113,7 +123,14 @@ export default function EventsListScreen() {
   const renderEventCard = ({ item }: { item: Event }) => (
     <TouchableOpacity
       style={styles.eventCard}
-      onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+      onPress={() => {
+        if (!item.id) {
+          console.error('Event has no ID:', item);
+          return;
+        }
+        console.log('Navigating to event:', item.id);
+        navigation.navigate('EventDetail', { eventId: item.id });
+      }}
     >
       <View style={styles.eventHeader}>
         <Text style={styles.eventName}>{item.name}</Text>

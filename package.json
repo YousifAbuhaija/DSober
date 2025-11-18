@@ -16,7 +16,8 @@
     "cleanup-rejected": "ts-node scripts/cleanup-rejected-requests.ts",
     "check-requests": "ts-node scripts/check-user-requests.ts",
     "delete-request": "ts-node scripts/delete-user-request.ts",
-    "add-profile-photo": "ts-node scripts/add-profile-photo-column.ts"
+    "add-profile-photo": "ts-node scripts/add-profile-photo-column.ts",
+    "verify-dd-realtime": "ts-node scripts/verify-dd-upgrade-realtime.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -25,12 +26,15 @@
     "@react-navigation/native": "^7.1.20",
     "@react-navigation/stack": "^7.6.4",
     "@supabase/supabase-js": "^2.81.1",
-    "expo": "~54.0.23",
+    "expo": "~54.0.24",
     "expo-audio": "~1.0.14",
     "expo-av": "^16.0.7",
     "expo-camera": "^17.0.9",
+    "expo-dev-client": "~6.0.18",
+    "expo-device": "^8.0.9",
     "expo-image-picker": "^17.0.8",
     "expo-location": "^19.0.7",
+    "expo-notifications": "^0.32.13",
     "expo-status-bar": "~3.0.8",
     "react": "19.1.0",
     "react-native": "0.81.5",
