@@ -140,11 +140,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at
   BEFORE UPDATE ON users
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_dd_assignments_updated_at ON dd_assignments;
 CREATE TRIGGER update_dd_assignments_updated_at
   BEFORE UPDATE ON dd_assignments
   FOR EACH ROW
@@ -159,6 +161,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS set_user_email_on_insert ON users;
 CREATE TRIGGER set_user_email_on_insert
   BEFORE INSERT ON users
   FOR EACH ROW

@@ -5,7 +5,7 @@ RETURNS TEXT AS $$
 BEGIN
   -- Use Supabase Cloud URL for production
   -- Format: https://<project-ref>.supabase.co/functions/v1/<function-name>
-  RETURN 'https://hdkvgrpshgswdgsqihpp.supabase.co/functions/v1/' || function_name;
+  RETURN 'https://ybsinrajanwhabgivsvv.supabase.co/functions/v1/' || function_name;
 END;
 $$ LANGUAGE plpgsql STABLE;
 

@@ -18,8 +18,7 @@ DROP FUNCTION IF EXISTS public.is_user_admin();
 DROP FUNCTION IF EXISTS public.update_updated_at_column() CASCADE;
 DROP FUNCTION IF EXISTS public.set_user_email() CASCADE;
 
--- Drop storage buckets (if they exist)
-DELETE FROM storage.buckets WHERE id IN ('license-photos', 'sep-selfies', 'sep-audio');
+-- Note: Storage buckets must be deleted via the Supabase Storage API, not SQL.
 
 -- Note: After running this, run the migrations in order:
 -- 1. 001_initial_schema.sql

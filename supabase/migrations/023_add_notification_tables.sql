@@ -10,7 +10,7 @@
 -- Stores Expo push tokens for user devices to enable push notification delivery
 
 CREATE TABLE IF NOT EXISTS user_devices (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   expo_push_token TEXT NOT NULL UNIQUE,
   device_name TEXT,
@@ -58,7 +58,7 @@ CREATE POLICY "Users can delete their own devices"
 -- Stores notification history for in-app notification center and delivery tracking
 
 CREATE TABLE IF NOT EXISTS notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
   title TEXT NOT NULL,
