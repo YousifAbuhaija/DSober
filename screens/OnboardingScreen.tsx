@@ -1,6 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { theme } from '../theme/colors';
+import { colors, spacing, typography, radii } from '../theme';
 import BasicInfoScreen from './onboarding/BasicInfoScreen';
 import GroupJoinScreen from './onboarding/GroupJoinScreen';
 import DDInterestScreen from './onboarding/DDInterestScreen';
@@ -48,9 +48,9 @@ export default function OnboardingScreen() {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: theme.colors.background.primary,
+          backgroundColor: colors.bg.canvas,
         },
-        headerTintColor: theme.colors.text.primary,
+        headerTintColor: colors.text.primary,
         headerTitleStyle: {
           fontWeight: '600',
         },

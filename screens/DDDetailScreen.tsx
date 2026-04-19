@@ -19,7 +19,7 @@ import { supabase } from '../lib/supabase';
 import { User, SEPBaseline, RideRequest } from '../types/database.types';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentLocation } from '../utils/location';
-import { theme } from '../theme/colors';
+import { colors, spacing, typography, radii } from '../theme';
 
 type DDsStackParamList = {
   DDsList: undefined;
@@ -118,7 +118,6 @@ export default function DDDetailScreen() {
 
       if (baselineError && baselineError.code !== 'PGRST116') {
         // PGRST116 is "not found" error, which is acceptable
-        console.error('Error fetching SEP baseline:', baselineError);
       }
 
       if (baselineData) {
@@ -133,7 +132,6 @@ export default function DDDetailScreen() {
         setSepBaseline(mappedBaseline);
       }
     } catch (err) {
-      console.error('Error fetching DD details:', err);
       setError('Failed to load DD details. Please try again.');
     } finally {
       setLoading(false);
@@ -153,7 +151,6 @@ export default function DDDetailScreen() {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error checking existing request:', error);
         return;
       }
 
@@ -175,7 +172,6 @@ export default function DDDetailScreen() {
         setExistingRequest(mappedRequest);
       }
     } catch (err) {
-      console.error('Error checking existing request:', err);
     }
   };
 
@@ -193,7 +189,6 @@ export default function DDDetailScreen() {
       try {
         userLocation = await getCurrentLocation();
       } catch (locError) {
-        console.log('Could not get location, continuing without coordinates');
       }
 
       // Create ride request
@@ -255,7 +250,6 @@ export default function DDDetailScreen() {
         ]
       );
     } catch (err: any) {
-      console.error('Error requesting ride:', err);
       Alert.alert(
         'Error',
         err.message || 'Failed to request ride. Please try again.',
@@ -269,7 +263,7 @@ export default function DDDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        <ActivityIndicator size="large" color={colors.brand.primary} />
       </View>
     );
   }
@@ -301,7 +295,6 @@ export default function DDDetailScreen() {
         );
       }
     } catch (error) {
-      console.error('Error opening phone dialer:', error);
       Alert.alert(
         'Error',
         'Failed to open phone dialer. Please try again.',
@@ -333,8 +326,6 @@ export default function DDDetailScreen() {
               style={styles.photo}
               resizeMode="cover"
               onError={(error) => {
-                console.error('Error loading DD detail photo:', error.nativeEvent.error);
-                console.log('Failed URL:', ddUser.profilePhotoUrl);
               }}
             />
           ) : (
@@ -530,7 +521,7 @@ export default function DDDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
   contentContainer: {
     paddingBottom: 32,
@@ -539,22 +530,22 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
     paddingHorizontal: 32,
   },
   errorText: {
     fontSize: 16,
-    color: theme.colors.functional.error,
+    color: colors.ui.error,
     textAlign: 'center',
   },
   photoSection: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     paddingTop: 24,
     paddingBottom: 16,
     paddingHorizontal: 16,
@@ -562,7 +553,7 @@ const styles = StyleSheet.create({
   photoSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 16,
@@ -575,18 +566,18 @@ const styles = StyleSheet.create({
   photoLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 12,
   },
   photo: {
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
-    borderColor: theme.colors.primary.main,
+    borderColor: colors.brand.primary,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -595,7 +586,7 @@ const styles = StyleSheet.create({
   },
   photoCaption: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
+    color: colors.text.tertiary,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -603,32 +594,32 @@ const styles = StyleSheet.create({
     width: 192,
     height: 192,
     borderRadius: 96,
-    backgroundColor: theme.colors.primary.main,
+    backgroundColor: colors.brand.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 80,
     fontWeight: '700',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
   nameContainer: {
     alignItems: 'center',
     paddingVertical: 20,
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
+    borderBottomColor: colors.border.default,
   },
   name: {
     fontSize: 28,
     fontWeight: '700',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 4,
   },
   nameSubtitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: theme.colors.primary.light,
+    color: colors.brand.primary,
   },
   section: {
     marginTop: 24,
@@ -637,11 +628,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 12,
   },
   infoCard: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -659,41 +650,41 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
   infoValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
   },
   noInfoText: {
     fontSize: 14,
-    color: theme.colors.text.tertiary,
+    color: colors.text.tertiary,
     fontStyle: 'italic',
     textAlign: 'center',
   },
   contactText: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     lineHeight: 20,
   },
   noticeContainer: {
     marginTop: 24,
     marginHorizontal: 16,
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    borderColor: colors.border.default,
   },
   noticeText: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     lineHeight: 20,
     textAlign: 'center',
   },
   callButton: {
-    backgroundColor: theme.colors.functional.success,
+    backgroundColor: colors.ui.success,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -706,7 +697,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   callButtonDisabled: {
-    backgroundColor: theme.colors.state.disabled,
+    backgroundColor: colors.bg.muted,
   },
   callButtonIcon: {
     fontSize: 24,
@@ -715,10 +706,10 @@ const styles = StyleSheet.create({
   callButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
   requestRideButton: {
-    backgroundColor: theme.colors.primary.main,
+    backgroundColor: colors.brand.primary,
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -737,33 +728,33 @@ const styles = StyleSheet.create({
   requestRideButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
   requestStatusCard: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    borderColor: colors.border.default,
   },
   requestStatusTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 8,
   },
   requestStatusText: {
     fontSize: 16,
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 4,
   },
   requestStatusDetail: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     fontStyle: 'italic',
   },
   viewStatusButton: {
-    backgroundColor: theme.colors.secondary.main,
+    backgroundColor: colors.bg.elevated,
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
@@ -772,7 +763,7 @@ const styles = StyleSheet.create({
   viewStatusButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.onSecondary,
+    color: '#fff',
   },
   modalOverlay: {
     flex: 1,
@@ -782,7 +773,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -796,26 +787,26 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 8,
     textAlign: 'center',
   },
   modalSubtitle: {
     fontSize: 16,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     marginBottom: 20,
     textAlign: 'center',
   },
   modalInput: {
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     minHeight: 80,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    borderColor: colors.border.default,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -829,22 +820,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalButtonCancel: {
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
   },
   modalButtonConfirm: {
-    backgroundColor: theme.colors.primary.main,
+    backgroundColor: colors.brand.primary,
   },
   modalButtonDisabled: {
-    backgroundColor: theme.colors.state.disabled,
+    backgroundColor: colors.bg.muted,
   },
   modalButtonTextCancel: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
   },
   modalButtonTextConfirm: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
 });

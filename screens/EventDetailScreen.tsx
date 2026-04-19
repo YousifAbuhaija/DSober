@@ -16,7 +16,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Event, DDAssignment, DDRequest, User } from '../types/database.types';
 import { markEventAsCompleted } from '../utils/eventStatus';
-import { theme } from '../theme/colors';
+import { colors, spacing, typography, radii } from '../theme';
 
 type EventsStackParamList = {
   EventsList: undefined;
@@ -81,11 +81,9 @@ export default function EventDetailScreen() {
 
   const fetchEventDetails = async () => {
     try {
-      console.log('fetchEventDetails called for eventId:', eventId);
       
       // Validate eventId before making any queries
       if (!eventId || eventId === '') {
-        console.error('Invalid eventId:', eventId);
         Alert.alert('Error', 'Invalid event ID. Please try again.');
         navigation.goBack();
         return;
@@ -169,7 +167,6 @@ export default function EventDetailScreen() {
 
         // Check if current user has a DD assignment
         const userAssignment = mappedAssignments.find((a) => a.userId === user.id);
-        console.log('User assignment found:', userAssignment);
         if (userAssignment) {
           setUserDDAssignment(userAssignment);
         }
@@ -190,7 +187,6 @@ export default function EventDetailScreen() {
         }
       }
     } catch (error) {
-      console.error('Error fetching event details:', error);
       Alert.alert('Error', 'Failed to load event details');
     } finally {
       setLoading(false);
@@ -236,7 +232,6 @@ export default function EventDetailScreen() {
       Alert.alert('Success', 'Your DD request has been submitted');
       fetchEventDetails();
     } catch (error) {
-      console.error('Error requesting to be DD:', error);
       Alert.alert('Error', 'Failed to submit DD request');
     } finally {
       setRequestingDD(false);
@@ -275,7 +270,6 @@ export default function EventDetailScreen() {
 
       setGroupMembers(mappedUsers);
     } catch (error) {
-      console.error('Error fetching group members:', error);
       Alert.alert('Error', 'Failed to load group members');
       setAssignModalVisible(false);
     } finally {
@@ -320,7 +314,6 @@ export default function EventDetailScreen() {
       setAssignModalVisible(false);
       fetchEventDetails();
     } catch (error) {
-      console.error('Error assigning DD:', error);
       Alert.alert('Error', 'Failed to assign DD');
     } finally {
       setAssigningDD(false);
@@ -382,13 +375,13 @@ export default function EventDetailScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming':
-        return theme.colors.primary.main;
+        return colors.brand.primary;
       case 'active':
-        return theme.colors.functional.success;
+        return colors.ui.success;
       case 'completed':
-        return theme.colors.text.tertiary;
+        return colors.text.tertiary;
       default:
-        return theme.colors.text.tertiary;
+        return colors.text.tertiary;
     }
   };
 
@@ -416,7 +409,6 @@ export default function EventDetailScreen() {
                 Alert.alert('Error', result.error || 'Failed to mark event as completed');
               }
             } catch (error) {
-              console.error('Error marking event as completed:', error);
               Alert.alert('Error', 'Failed to mark event as completed');
             } finally {
               setMarkingCompleted(false);
@@ -428,9 +420,6 @@ export default function EventDetailScreen() {
   };
 
   const renderDDStatusSection = () => {
-    console.log('renderDDStatusSection - userDDAssignment:', userDDAssignment);
-    console.log('renderDDStatusSection - activeSession:', activeSession);
-    console.log('renderDDStatusSection - user.ddStatus:', user?.ddStatus);
     
     // Check if user is globally revoked as a DD
     if (user?.ddStatus === 'revoked') {
@@ -480,7 +469,6 @@ export default function EventDetailScreen() {
 
     // User has an assignment
     if (userDDAssignment) {
-      console.log('User has assignment with status:', userDDAssignment.status);
       if (userDDAssignment.status === 'assigned') {
         return (
           <View style={styles.section}>
@@ -581,7 +569,7 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        <ActivityIndicator size="large" color={colors.brand.primary} />
       </View>
     );
   }
@@ -706,7 +694,7 @@ export default function EventDetailScreen() {
 
             {loadingMembers ? (
               <View style={styles.modalLoadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primary.main} />
+                <ActivityIndicator size="large" color={colors.brand.primary} />
               </View>
             ) : (
               <FlatList
@@ -731,7 +719,7 @@ export default function EventDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
   content: {
     padding: 16,
@@ -740,14 +728,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
   errorText: {
     fontSize: 16,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
   header: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -760,7 +748,7 @@ const styles = StyleSheet.create({
   eventName: {
     fontSize: 24,
     fontWeight: '700',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 8,
   },
   statusBadge: {
@@ -772,10 +760,10 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '700',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
   section: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -788,7 +776,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 12,
   },
   detailRow: {
@@ -802,7 +790,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 16,
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     flex: 1,
   },
   descriptionContainer: {
@@ -811,25 +799,25 @@ const styles = StyleSheet.create({
   descriptionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     marginBottom: 4,
   },
   descriptionText: {
     fontSize: 14,
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     lineHeight: 20,
   },
   infoBox: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    borderColor: colors.border.default,
   },
   infoText: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     lineHeight: 20,
   },
   statusBox: {
@@ -842,7 +830,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   primaryButton: {
-    backgroundColor: theme.colors.primary.main,
+    backgroundColor: colors.brand.primary,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
@@ -852,7 +840,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
   secondaryButton: {
     backgroundColor: 'transparent',
@@ -860,25 +848,25 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: theme.colors.secondary.main,
+    borderColor: colors.bg.elevated,
     marginTop: 12,
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.secondary.main,
+    color: colors.bg.elevated,
   },
   completeButton: {
-    borderColor: theme.colors.text.tertiary,
+    borderColor: colors.text.tertiary,
   },
   completeButtonText: {
-    color: theme.colors.text.tertiary,
+    color: colors.text.tertiary,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   ddCard: {
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -891,7 +879,7 @@ const styles = StyleSheet.create({
   ddName: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
   },
   ddStatusBadge: {
     paddingHorizontal: 8,
@@ -908,7 +896,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
@@ -920,24 +908,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
+    borderBottomColor: colors.border.default,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
   },
   closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
     fontSize: 20,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
   modalLoadingContainer: {
     padding: 40,
@@ -948,7 +936,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   memberItem: {
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -957,9 +945,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   memberItemAssigned: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderWidth: 1,
-    borderColor: theme.colors.functional.success,
+    borderColor: colors.ui.success,
   },
   memberInfo: {
     flex: 1,
@@ -967,17 +955,17 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 4,
   },
   memberEmail: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     marginBottom: 4,
   },
   ddBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: theme.colors.primary.main,
+    backgroundColor: colors.brand.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -986,7 +974,7 @@ const styles = StyleSheet.create({
   ddBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
   assignedIndicator: {
     marginLeft: 12,
@@ -994,7 +982,7 @@ const styles = StyleSheet.create({
   assignedText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.functional.success,
+    color: colors.ui.success,
   },
   emptyContainer: {
     padding: 40,
@@ -1002,6 +990,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
 });

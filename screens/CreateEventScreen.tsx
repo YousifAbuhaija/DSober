@@ -15,7 +15,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { theme } from '../theme/colors';
+import { colors, spacing, typography, radii } from '../theme';
 
 type EventsStackParamList = {
   EventsList: undefined;
@@ -100,7 +100,6 @@ export default function CreateEventScreen() {
         },
       ]);
     } catch (error) {
-      console.error('Error creating event:', error);
       Alert.alert('Error', 'Failed to create event. Please try again.');
     } finally {
       setCreating(false);
@@ -155,7 +154,7 @@ export default function CreateEventScreen() {
             focusedInput === 'name' ? styles.inputFocused : null,
           ]}
           placeholder="e.g., Friday Night Social"
-          placeholderTextColor={theme.colors.text.tertiary}
+          placeholderTextColor={colors.text.tertiary}
           value={name}
           onChangeText={(text) => {
             setName(text);
@@ -177,7 +176,7 @@ export default function CreateEventScreen() {
             focusedInput === 'description' ? styles.inputFocused : null,
           ]}
           placeholder="Add event details (optional)"
-          placeholderTextColor={theme.colors.text.tertiary}
+          placeholderTextColor={colors.text.tertiary}
           value={description}
           onChangeText={setDescription}
           onFocus={() => setFocusedInput('description')}
@@ -239,7 +238,7 @@ export default function CreateEventScreen() {
             focusedInput === 'location' ? styles.inputFocused : null,
           ]}
           placeholder="e.g., Chapter House, 123 Main St"
-          placeholderTextColor={theme.colors.text.tertiary}
+          placeholderTextColor={colors.text.tertiary}
           value={locationText}
           onChangeText={(text) => {
             setLocationText(text);
@@ -260,7 +259,7 @@ export default function CreateEventScreen() {
         disabled={creating}
       >
         {creating ? (
-          <ActivityIndicator color={theme.colors.text.onPrimary} />
+          <ActivityIndicator color={'#fff'} />
         ) : (
           <Text style={styles.createButtonText}>Create Event</Text>
         )}
@@ -280,7 +279,7 @@ export default function CreateEventScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
   content: {
     padding: 16,
@@ -291,23 +290,23 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
     borderRadius: 10,
     padding: 16,
     fontSize: 16,
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    borderColor: colors.border.default,
   },
   inputFocused: {
-    borderColor: theme.colors.border.focus,
+    borderColor: colors.border.strong,
   },
   inputError: {
-    borderColor: theme.colors.border.error,
+    borderColor: colors.ui.error,
   },
   textArea: {
     minHeight: 100,
@@ -315,7 +314,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: theme.colors.functional.error,
+    color: colors.ui.error,
     marginTop: 4,
   },
   dateTimeRow: {
@@ -326,11 +325,11 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
     borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    borderColor: colors.border.default,
   },
   dateTimeIcon: {
     fontSize: 20,
@@ -338,11 +337,11 @@ const styles = StyleSheet.create({
   },
   dateTimeText: {
     fontSize: 16,
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     flex: 1,
   },
   createButton: {
-    backgroundColor: theme.colors.primary.main,
+    backgroundColor: colors.brand.primary,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
@@ -356,7 +355,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
   cancelButton: {
     backgroundColor: 'transparent',
@@ -364,11 +363,11 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: theme.colors.border.default,
+    borderColor: colors.border.default,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
 });
