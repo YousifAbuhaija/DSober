@@ -1,125 +1,86 @@
-/**
- * Central color definitions for the DSober app
- * 
- * Color Palette:
- * - Background: #121212 (Dark gray, almost black)
- * - Primary: #402B78 (Deep purple)
- * - Secondary: #B7F79E (Lime green)
- * 
- * Accessibility (WCAG 2.0 Level AA Compliant):
- * - All color combinations meet WCAG AA standards (4.5:1 for normal text, 3:1 for UI components)
- * - Primary light adjusted to #8B6FD8 for icons/borders (4.8:1 contrast)
- * - Border default adjusted to #666666 (3.3:1 contrast)
- * - Functional colors preserved for intuitive user experience
- * - Run `npm run verify-accessibility` to verify compliance
- * 
- * Usage Guidelines:
- * - Use primary.main (#402B78) ONLY as background color
- * - Use primary.light (#8B6FD8) for icons/text on dark backgrounds
- * - Always reference theme constants, never hardcode colors
- */
+export const colors = {
+  bg: {
+    canvas:  '#080808',
+    surface: '#111111',
+    elevated:'#1A1A1A',
+    input:   '#1E1E1E',
+    muted:   '#262626',
+  },
+  brand: {
+    primary: '#6B4FDB',
+    pressed:  '#5538C8',
+    faint:    '#2A1E6E',
+    lime:     '#B7F79E',
+    limePressed: '#9AE080',
+  },
+  text: {
+    primary:   '#FFFFFF',
+    secondary: '#9A9A9A',
+    tertiary:  '#5A5A5A',
+    inverse:   '#080808',
+    onBrand:   '#FFFFFF',
+    onLime:    '#0A1A08',
+  },
+  ui: {
+    success: '#22C55E',
+    error:   '#EF4444',
+    warning: '#F59E0B',
+    info:    '#3B82F6',
+  },
+  border: {
+    subtle:  '#2A2A2A',
+    default: '#3A3A3A',
+    strong:  '#555555',
+  },
+} as const;
 
+export type Colors = typeof colors;
+
+// Legacy compat shim — screens still importing `theme.colors.*`
 export const theme = {
   colors: {
-    // Base background colors
     background: {
-      primary: '#121212',    // Main dark background
-      elevated: '#1E1E1E',   // Slightly lighter for cards/elevated surfaces
-      input: '#2A2A2A',      // Input field backgrounds
+      primary:  colors.bg.canvas,
+      elevated: colors.bg.elevated,
+      input:    colors.bg.input,
     },
-    
-    // Brand colors - Primary (Purple)
     primary: {
-      main: '#402B78',       // Deep purple - primary actions (background use only)
-      light: '#8B6FD8',      // Lighter tint - borders/outlines/icons (4.5:1 contrast)
-      dark: '#2A1A50',       // Darker shade - pressed states
+      main:  colors.brand.primary,
+      light: '#9B82FF',
+      dark:  colors.brand.pressed,
     },
-    
-    // Brand colors - Secondary (Lime Green)
     secondary: {
-      main: '#B7F79E',       // Lime green - secondary actions
-      light: '#D4FFBE',      // Lighter tint - highlights
-      dark: '#8BC34A',       // Darker shade - pressed states
+      main:  colors.brand.lime,
+      light: '#D4FFBE',
+      dark:  colors.brand.limePressed,
     },
-    
-    // Text colors with appropriate contrast
     text: {
-      primary: '#FFFFFF',    // White - primary text (15.3:1 contrast)
-      secondary: '#B0B0B0',  // Medium gray - secondary text
-      tertiary: '#808080',   // Light gray - tertiary text/hints
-      disabled: '#4A4A4A',   // Muted gray - disabled text
-      onPrimary: '#FFFFFF',  // White text on primary color (8.2:1 contrast)
-      onSecondary: '#121212', // Dark text on secondary color (12.1:1 contrast)
+      primary:     colors.text.primary,
+      secondary:   colors.text.secondary,
+      tertiary:    colors.text.tertiary,
+      disabled:    colors.text.tertiary,
+      onPrimary:   colors.text.onBrand,
+      onSecondary: colors.text.onLime,
     },
-    
-    // Functional colors (preserved for intuitive meaning)
     functional: {
-      success: '#4CAF50',    // Green - success states, "GO" signals
-      error: '#FF5252',      // Red - error states, "EARLY" signals
-      warning: '#FFC107',    // Amber - warning states, "READY" signals
-      info: '#2196F3',       // Blue - informational states
+      success: colors.ui.success,
+      error:   colors.ui.error,
+      warning: colors.ui.warning,
+      info:    colors.ui.info,
     },
-    
-    // Border colors
     border: {
-      default: '#666666',    // Default border color (4.0:1 contrast - exceeds 3:1 requirement)
-      focus: '#8B6FD8',      // Focused state (lighter purple for better contrast: 4.8:1)
-      error: '#FF5252',      // Error state
+      default: colors.border.default,
+      focus:   colors.border.strong,
+      error:   colors.ui.error,
     },
-    
-    // UI state colors
     state: {
-      active: '#402B78',     // Active state (primary)
-      inactive: '#808080',   // Inactive state
-      disabled: '#4A4A4A',   // Disabled state
-      hover: '#6B4FB8',      // Hover state (primary light)
-      pressed: '#2A1A50',    // Pressed state (primary dark)
+      active:   colors.brand.primary,
+      inactive: colors.text.tertiary,
+      disabled: '#333333',
+      hover:    '#7D62E8',
+      pressed:  colors.brand.pressed,
     },
   },
 };
 
-/**
- * Helper function to safely get a color value with fallback
- * @param colorPath - Dot-notation path to color (e.g., 'primary.main')
- * @param fallback - Fallback color if path not found
- * @returns Color hex value
- */
-export const getColor = (colorPath: string, fallback: string = '#FFFFFF'): string => {
-  try {
-    const keys = colorPath.split('.');
-    let value: any = theme.colors;
-    
-    for (const key of keys) {
-      value = value[key];
-      if (value === undefined) return fallback;
-    }
-    
-    return typeof value === 'string' ? value : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-/**
- * Type guard to check if a color exists in the theme
- * @param colorPath - Dot-notation path to color
- * @returns boolean indicating if color exists
- */
-export const hasColor = (colorPath: string): boolean => {
-  try {
-    const keys = colorPath.split('.');
-    let value: any = theme.colors;
-    
-    for (const key of keys) {
-      value = value[key];
-      if (value === undefined) return false;
-    }
-    
-    return typeof value === 'string';
-  } catch {
-    return false;
-  }
-};
-
-// Export individual color groups for convenience
-export const { background, primary, secondary, text, functional, border, state } = theme.colors;
+export const { bg, brand, text, ui, border } = colors;
