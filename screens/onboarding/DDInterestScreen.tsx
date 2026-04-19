@@ -1,248 +1,208 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { theme } from '../../theme/colors';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
+import StepProgress from '../../components/ui/StepProgress';
+import { colors, spacing, typography, radii, border } from '../../theme';
 
-interface DDInterestScreenProps {
-  navigation: any;
-}
+const TOTAL_STEPS = 8;
 
-export default function DDInterestScreen({ navigation }: DDInterestScreenProps) {
-  const { session, refreshUser } = useAuth();
+export default function DDInterestScreen({ navigation }: any) {
+  const { session } = useAuth();
   const [isDD, setIsDD] = useState<boolean | null>(null);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleNext = async () => {
     if (isDD === null) {
-      Alert.alert('Please Select', 'Please indicate if you want to be a designated driver');
+      setError('Please make a selection to continue');
       return;
     }
-
     setLoading(true);
-
     try {
-      if (!session?.user?.id) {
-        throw new Error('No user session found');
-      }
-
-      // Update user's isDD field and dd_status
-      const { error } = await supabase
+      await supabase
         .from('users')
         .update({
           is_dd: isDD,
           dd_status: isDD ? 'active' : 'none',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', session.user.id);
+        .eq('id', session!.user.id);
 
-      if (error) throw error;
-
-      // Don't refresh user context here - it will cause navigation to re-evaluate
-      // profile completion and potentially kick user back to BasicInfo
-      // The user context will be refreshed when onboarding is complete
-      
-      // Navigate based on DD selection
-      if (isDD) {
-        // If user wants to be a DD, go to driver info screen
-        navigation.navigate('DriverInfo');
-      } else {
-        // If not a DD, go to SEP baseline
-        navigation.navigate('SEPReaction', { mode: 'baseline' });
-      }
-    } catch (error: any) {
-      console.error('Error saving DD preference:', error);
-      Alert.alert('Error', error.message || 'Failed to save preference. Please try again.');
+      navigation.navigate(isDD ? 'DriverInfo' : 'ProfilePhoto');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to save. Try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
+    <ScreenWrapper>
+      <View style={styles.container}>
+        <StepProgress current={2} total={TOTAL_STEPS} label="DD Interest" />
+
+        <View style={styles.headingBlock}>
           <Text style={styles.title}>Designated Driver</Text>
           <Text style={styles.subtitle}>
-            Would you like to be a designated driver for your chapter's events?
+            Would you like to serve as a designated driver for your chapter's events?
           </Text>
         </View>
 
-        <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>What does this mean?</Text>
-          <Text style={styles.infoText}>
-            • You'll be able to volunteer to drive for events{'\n'}
-            • You'll need to pass a sobriety verification before each session{'\n'}
-            • You'll provide your car information and license photo{'\n'}
-            • Members can find you when they need a safe ride
-          </Text>
+        <Card style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.brand.primary} style={styles.infoIcon} />
+            <Text style={styles.infoText}>Pass a sobriety check before every session</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Ionicons name="car-outline" size={20} color={colors.brand.primary} style={styles.infoIcon} />
+            <Text style={styles.infoText}>Provide vehicle details and license photo</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Ionicons name="people-outline" size={20} color={colors.brand.primary} style={styles.infoIcon} />
+            <Text style={styles.infoText}>Members can request rides from you at events</Text>
+          </View>
+        </Card>
+
+        <View style={styles.optionsBlock}>
+          {[
+            { value: true,  label: 'Yes, I want to be a DD',   sub: 'Help keep your chapter safe' },
+            { value: false, label: 'Not right now',              sub: 'You can change this later in Profile' },
+          ].map(({ value, label, sub }) => (
+            <TouchableOpacity
+              key={String(value)}
+              style={[styles.option, isDD === value && styles.optionActive]}
+              onPress={() => { setIsDD(value); setError(''); }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.optionInner}>
+                <View>
+                  <Text style={[styles.optionLabel, isDD === value && styles.optionLabelActive]}>
+                    {label}
+                  </Text>
+                  <Text style={styles.optionSub}>{sub}</Text>
+                </View>
+                <View style={[styles.radio, isDD === value && styles.radioActive]}>
+                  {isDD === value && (
+                    <View style={styles.radioDot} />
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        <View style={styles.optionContainer}>
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              isDD === true && styles.optionButtonSelected,
-            ]}
-            onPress={() => setIsDD(true)}
-          >
-            <View style={styles.optionContent}>
-              <Text
-                style={[
-                  styles.optionTitle,
-                  isDD === true && styles.optionTitleSelected,
-                ]}
-              >
-                Yes, I want to be a DD
-              </Text>
-              <Text
-                style={[
-                  styles.optionDescription,
-                  isDD === true && styles.optionDescriptionSelected,
-                ]}
-              >
-                Help keep your chapter safe
-              </Text>
-            </View>
-          </TouchableOpacity>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              isDD === false && styles.optionButtonSelected,
-            ]}
-            onPress={() => setIsDD(false)}
-          >
-            <View style={styles.optionContent}>
-              <Text
-                style={[
-                  styles.optionTitle,
-                  isDD === false && styles.optionTitleSelected,
-                ]}
-              >
-                No, not at this time
-              </Text>
-              <Text
-                style={[
-                  styles.optionDescription,
-                  isDD === false && styles.optionDescriptionSelected,
-                ]}
-              >
-                You can change this later in settings
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.nextButton, loading && styles.nextButtonDisabled]}
+        <Button
           onPress={handleNext}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={theme.colors.text.onPrimary} />
-          ) : (
-            <Text style={styles.nextButtonText}>Continue</Text>
-          )}
-        </TouchableOpacity>
+          label="Continue"
+          loading={loading}
+          fullWidth
+          size="lg"
+          style={styles.cta}
+        />
       </View>
-    </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing['2xl'],
   },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  header: {
-    marginBottom: 32,
+  headingBlock: {
+    marginBottom: spacing.xl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
+    ...typography.title1,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
+    ...typography.callout,
+    color: colors.text.secondary,
     lineHeight: 22,
   },
-  infoBox: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 32,
+  infoCard: {
+    marginBottom: spacing.xl,
+    gap: spacing.md,
   },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
-  },
-  optionContainer: {
-    gap: 12,
-    marginBottom: 32,
-  },
-  optionButton: {
-    borderWidth: 2,
-    borderColor: theme.colors.border.default,
-    borderRadius: 12,
-    padding: 16,
-    backgroundColor: theme.colors.background.input,
-  },
-  optionButtonSelected: {
-    borderColor: theme.colors.primary.main,
-    backgroundColor: theme.colors.primary.dark,
-  },
-  optionContent: {
-    gap: 4,
-  },
-  optionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-  },
-  optionTitleSelected: {
-    color: theme.colors.secondary.main,
-  },
-  optionDescription: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-  },
-  optionDescriptionSelected: {
-    color: theme.colors.secondary.light,
-  },
-  nextButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
+  infoRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  nextButtonDisabled: {
-    backgroundColor: theme.colors.state.disabled,
+  infoIcon: {
+    marginRight: spacing.md,
   },
-  nextButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 16,
-    fontWeight: '600',
+  infoText: {
+    ...typography.callout,
+    color: colors.text.secondary,
+    flex: 1,
+  },
+  optionsBlock: {
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  option: {
+    borderWidth: 1.5,
+    borderColor: colors.border.default,
+    borderRadius: radii.lg,
+    padding: spacing.base,
+    backgroundColor: colors.bg.surface,
+  },
+  optionActive: {
+    borderColor: colors.brand.primary,
+    backgroundColor: colors.brand.faint,
+  },
+  optionInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  optionLabel: {
+    ...typography.bodyBold,
+    color: colors.text.secondary,
+    marginBottom: 2,
+  },
+  optionLabelActive: {
+    color: colors.text.primary,
+  },
+  optionSub: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+  },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: colors.border.default,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioActive: {
+    borderColor: colors.brand.primary,
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.brand.primary,
+  },
+  errorText: {
+    ...typography.caption,
+    color: colors.ui.error,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  cta: {
+    marginTop: 'auto' as any,
   },
 });

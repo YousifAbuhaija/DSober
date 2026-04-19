@@ -11,10 +11,12 @@ import type { NotificationPriority } from '../types/notifications';
 interface NotificationContextType {
   expoPushToken: string | null;
   notification: Notifications.Notification | null;
+  unreadCount: number;
   initialize: () => Promise<void>;
   requestPermissions: () => Promise<boolean>;
   registerDevice: () => Promise<void>;
   unregisterDevice: () => Promise<void>;
+  refreshUnreadCount: () => Promise<void>;
   getBadgeCount: () => Promise<number>;
   setBadgeCount: (count: number) => Promise<void>;
   clearBadge: () => Promise<void>;
@@ -87,6 +89,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { user, session } = useAuth();
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const notificationListener = useRef<Notifications.Subscription>();
   const responseListener = useRef<Notifications.Subscription>();
   const navigationRef = useRef<any>(null);
@@ -297,6 +300,29 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   };
 
   /**
+   * Fetch unread notification count from the database
+   */
+  const refreshUnreadCount = async (): Promise<void> => {
+    if (!user?.id) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
+
+      if (!error) {
+        setUnreadCount(count ?? 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  /**
    * Set navigation reference for routing from notifications
    */
   const setNavigationRef = (ref: any) => {
@@ -316,6 +342,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       // Increment badge count
       const currentBadge = await getBadgeCount();
       await setBadgeCount(currentBadge + 1);
+      setUnreadCount(prev => prev + 1);
       
       // Show in-app alert for foreground notifications
       const { title, body } = notification.request.content;
@@ -407,15 +434,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     };
   }, []);
 
-  // Handle token refresh when user changes
+  // Handle token refresh and unread count when user changes
   useEffect(() => {
     if (user?.id && session) {
-      // Check if we need to register/update token
+      refreshUnreadCount();
       if (!expoPushToken) {
         registerDevice().catch(error => {
           console.error('Failed to register device on user change:', error);
         });
       }
+    } else {
+      setUnreadCount(0);
     }
   }, [user?.id, session]);
 
@@ -424,10 +453,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       value={{
         expoPushToken,
         notification,
+        unreadCount,
         initialize,
         requestPermissions,
         registerDevice,
         unregisterDevice,
+        refreshUnreadCount,
         getBadgeCount,
         setBadgeCount,
         clearBadge,

@@ -1,167 +1,120 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import { theme } from '../../theme/colors';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import Button from '../../components/ui/Button';
+import { colors, spacing, typography, radii } from '../../theme';
 
-interface OnboardingCompleteScreenProps {
-  navigation: any;
-}
+const BULLETS = [
+  { icon: 'calendar-outline' as const, text: 'Browse upcoming events in your chapter' },
+  { icon: 'car-outline' as const,      text: 'Find active DDs when you need a safe ride' },
+  { icon: 'shield-checkmark-outline' as const, text: 'Complete SEP verification before driving' },
+  { icon: 'navigate-outline' as const, text: 'Track your ride status in real time' },
+];
 
-export default function OnboardingCompleteScreen({ navigation }: OnboardingCompleteScreenProps) {
+export default function OnboardingCompleteScreen() {
   const { refreshUser } = useAuth();
+  const [loading, setLoading] = useState(false);
 
-  const handleContinue = async () => {
-    console.log('Get Started button pressed');
+  const handleStart = async () => {
+    setLoading(true);
     try {
-      // Refresh user data to update onboarding status
       await refreshUser();
-      console.log('User refreshed, RootNavigator should transition to MainApp');
-      // Navigation will be handled by RootNavigator based on updated user state
-    } catch (error) {
-      console.error('Error refreshing user:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Success Icon */}
-        <View style={styles.iconContainer}>
-          <View style={styles.checkmarkCircle}>
-            <Text style={styles.checkmark}>✓</Text>
+    <ScreenWrapper>
+      <View style={styles.container}>
+        <View style={styles.top}>
+          <View style={styles.checkCircle}>
+            <Ionicons name="checkmark" size={48} color="#fff" />
           </View>
+          <Text style={styles.title}>You're all set!</Text>
+          <Text style={styles.subtitle}>
+            Your baseline has been recorded and your account is ready.
+          </Text>
         </View>
 
-        {/* Title and Message */}
-        <Text style={styles.title}>Setup Complete!</Text>
-        <Text style={styles.message}>
-          You're all set to use DSober. Your baseline has been established and you can now access all features.
-        </Text>
-
-        {/* Summary Box */}
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryTitle}>What's Next?</Text>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryBullet}>•</Text>
-            <Text style={styles.summaryText}>
-              View upcoming events in your chapter
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryBullet}>•</Text>
-            <Text style={styles.summaryText}>
-              Request to be a DD for events
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryBullet}>•</Text>
-            <Text style={styles.summaryText}>
-              Find active DDs when you need a ride
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryBullet}>•</Text>
-            <Text style={styles.summaryText}>
-              Complete SEP verification before driving
-            </Text>
-          </View>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>What you can do now</Text>
+          {BULLETS.map(({ icon, text }) => (
+            <View key={text} style={styles.bullet}>
+              <Ionicons name={icon} size={18} color={colors.brand.primary} />
+              <Text style={styles.bulletText}>{text}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Continue Button */}
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-        >
-          <Text style={styles.continueButtonText}>Get Started</Text>
-        </TouchableOpacity>
+        <Button
+          onPress={handleStart}
+          label="Get Started"
+          loading={loading}
+          fullWidth
+          size="lg"
+          style={styles.cta}
+        />
       </View>
-    </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing['2xl'],
     justifyContent: 'center',
   },
-  iconContainer: {
+  top: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: spacing['2xl'],
   },
-  checkmarkCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: theme.colors.functional.success,
+  checkCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.ui.success,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmark: {
-    fontSize: 60,
-    color: theme.colors.text.onPrimary,
-    fontWeight: 'bold',
+    marginBottom: spacing.xl,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    ...typography.title1,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
     textAlign: 'center',
-    marginBottom: 16,
   },
-  message: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
+  subtitle: {
+    ...typography.callout,
+    color: colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  summaryBox: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 32,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 16,
-  },
-  summaryItem: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  summaryBullet: {
-    fontSize: 16,
-    color: theme.colors.secondary.main,
-    marginRight: 8,
-    fontWeight: 'bold',
-  },
-  summaryText: {
-    flex: 1,
-    fontSize: 16,
-    color: theme.colors.text.secondary,
     lineHeight: 22,
   },
-  continueButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 18,
+  card: {
+    backgroundColor: colors.bg.surface,
+    borderRadius: radii.lg,
+    padding: spacing.xl,
+    marginBottom: spacing['2xl'],
+    gap: spacing.md,
+  },
+  cardTitle: {
+    ...typography.bodyBold,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
+  bullet: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
   },
-  continueButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 18,
-    fontWeight: '600',
+  bulletText: {
+    ...typography.callout,
+    color: colors.text.secondary,
+    flex: 1,
   },
+  cta: {},
 });

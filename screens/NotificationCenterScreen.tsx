@@ -35,7 +35,7 @@ const DAYS_TO_FETCH = 30;
 
 export default function NotificationCenterScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { getBadgeCount, setBadgeCount } = useNotifications();
+  const { refreshUnreadCount, clearBadge } = useNotifications();
   
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,11 +75,24 @@ export default function NotificationCenterScreen({ navigation }: any) {
       }
 
       const fetchedNotifications = data || [];
-      
+
       if (append) {
         setNotifications(prev => [...prev, ...fetchedNotifications]);
       } else {
         setNotifications(fetchedNotifications);
+      }
+
+      // Mark all unread notifications as read now that the user has seen them
+      const unreadIds = fetchedNotifications.filter(n => !n.read).map(n => n.id);
+      if (unreadIds.length > 0 && !append) {
+        await supabase
+          .from('notifications')
+          .update({ read: true })
+          .in('id', unreadIds);
+        await clearBadge();
+        await refreshUnreadCount();
+        // Update local state so unread indicators disappear
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       }
 
       // Check if there are more notifications to load
@@ -220,19 +233,10 @@ export default function NotificationCenterScreen({ navigation }: any) {
           .update({ read: true })
           .eq('id', notification.id);
 
-        if (error) {
-          console.error('Error marking notification as read:', error);
-        } else {
-          // Update local state
+        if (!error) {
           setNotifications(prev =>
             prev.map(n => (n.id === notification.id ? { ...n, read: true } : n))
           );
-
-          // Decrement badge count
-          const currentBadge = await getBadgeCount();
-          if (currentBadge > 0) {
-            await setBadgeCount(currentBadge - 1);
-          }
         }
       }
 

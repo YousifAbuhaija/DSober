@@ -1,200 +1,146 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { theme } from '../../theme/colors';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import StepProgress from '../../components/ui/StepProgress';
+import { colors, spacing, typography, radii } from '../../theme';
 
-interface GroupJoinScreenProps {
-  navigation: any;
-}
+const TOTAL_STEPS = 8;
 
-export default function GroupJoinScreen({ navigation }: GroupJoinScreenProps) {
-  const { session, refreshUser } = useAuth();
+export default function GroupJoinScreen({ navigation }: any) {
+  const { session } = useAuth();
   const [accessCode, setAccessCode] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleJoinGroup = async () => {
-    // Validate access code
+  const handleJoin = async () => {
     if (!accessCode.trim()) {
-      Alert.alert('Error', 'Please enter an access code');
+      setError('Enter your chapter access code');
       return;
     }
-
     setLoading(true);
-
+    setError('');
     try {
-      if (!session?.user?.id) {
-        throw new Error('No user session found');
-      }
-
-      // Query the Group table to validate the access code
-      const { data: group, error: groupError } = await supabase
+      const { data: group, error: groupErr } = await supabase
         .from('groups')
         .select('id, name')
         .eq('access_code', accessCode.trim().toUpperCase())
         .single();
 
-      if (groupError || !group) {
-        Alert.alert(
-          'Invalid Code',
-          'The access code you entered was not found. Please check with your chapter admin.'
-        );
+      if (groupErr || !group) {
+        setError('Code not found — check with your chapter admin');
         setLoading(false);
         return;
       }
 
-      // Update user's groupId
-      const { error: updateError } = await supabase
+      const { error: updateErr } = await supabase
         .from('users')
-        .update({
-          group_id: group.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', session.user.id);
+        .update({ group_id: group.id, updated_at: new Date().toISOString() })
+        .eq('id', session!.user.id);
 
-      if (updateError) throw updateError;
-
-      // Navigate to DD Interest screen
-      // Note: We don't refresh user context here to avoid triggering
-      // the profile completion check in RootNavigator
+      if (updateErr) throw updateErr;
       navigation.navigate('DDInterest');
-    } catch (error: any) {
-      console.error('Error joining group:', error);
-      Alert.alert('Error', error.message || 'Failed to join group. Please try again.');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to join. Try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
+    <ScreenWrapper keyboard>
+      <View style={styles.container}>
+        <StepProgress current={1} total={TOTAL_STEPS} label="Join Chapter" />
+
+        <View style={styles.iconRow}>
+          <View style={styles.iconCircle}>
+            <Ionicons name="people-outline" size={32} color={colors.brand.primary} />
+          </View>
+        </View>
+
+        <View style={styles.headingBlock}>
           <Text style={styles.title}>Join Your Chapter</Text>
           <Text style={styles.subtitle}>
-            Enter the access code provided by your chapter admin
+            Enter the access code provided by your chapter admin to link your account.
           </Text>
         </View>
 
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Access Code</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter access code"
-              placeholderTextColor={theme.colors.text.tertiary}
-              value={accessCode}
-              onChangeText={setAccessCode}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              maxLength={20}
-            />
-            <Text style={styles.hint}>
-              Access codes are case-insensitive
-            </Text>
-          </View>
+        <Input
+          label="Access Code"
+          value={accessCode}
+          onChangeText={(v) => { setAccessCode(v); setError(''); }}
+          error={error}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={20}
+          returnKeyType="go"
+          onSubmitEditing={handleJoin}
+          hint="Codes are not case-sensitive"
+        />
 
-          <TouchableOpacity
-            style={[styles.joinButton, loading && styles.joinButtonDisabled]}
-            onPress={handleJoinGroup}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={theme.colors.text.onPrimary} />
-            ) : (
-              <Text style={styles.joinButtonText}>Join Chapter</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        <Button
+          onPress={handleJoin}
+          label="Join Chapter"
+          loading={loading}
+          fullWidth
+          size="lg"
+          style={styles.cta}
+        />
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Don't have an access code? Contact your chapter admin.
-          </Text>
-        </View>
+        <Text style={styles.helpText}>
+          Don't have a code? Contact your chapter administrator.
+        </Text>
       </View>
-    </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    paddingHorizontal: spacing.xl,
+    justifyContent: 'center',
+    paddingBottom: spacing['2xl'],
   },
-  content: {
-    flex: 1,
-    padding: 24,
+  iconRow: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.brand.faint,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  header: {
-    marginBottom: 40,
+  headingBlock: {
+    marginBottom: spacing.xl,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
+    ...typography.title1,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
+    ...typography.callout,
+    color: colors.text.secondary,
+    textAlign: 'center',
     lineHeight: 22,
   },
-  form: {
-    gap: 24,
+  cta: {
+    marginTop: spacing.sm,
   },
-  inputGroup: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: theme.colors.background.input,
-    color: theme.colors.text.primary,
-  },
-  hint: {
-    fontSize: 14,
-    color: theme.colors.text.tertiary,
-  },
-  joinButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  joinButtonDisabled: {
-    backgroundColor: theme.colors.state.disabled,
-  },
-  joinButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    marginTop: 40,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
+  helpText: {
+    ...typography.caption,
+    color: colors.text.tertiary,
     textAlign: 'center',
+    marginTop: spacing.xl,
   },
 });

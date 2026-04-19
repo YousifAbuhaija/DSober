@@ -1,373 +1,250 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  Modal,
-} from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { theme } from '../../theme/colors';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import StepProgress from '../../components/ui/StepProgress';
+import { colors, spacing, typography, radii } from '../../theme';
 
-interface BasicInfoScreenProps {
-  navigation: any;
+const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+const TOTAL_STEPS = 8;
+
+function calculateAge(birthDate: Date): number {
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+  return age;
 }
 
-export default function BasicInfoScreen({ navigation }: BasicInfoScreenProps) {
-  const { session, refreshUser } = useAuth();
+function parseBirthday(text: string): Date | null {
+  const parts = text.split('/');
+  if (parts.length !== 3) return null;
+  const month = parseInt(parts[0], 10) - 1;
+  const day = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+  if (isNaN(month) || isNaN(day) || isNaN(year)) return null;
+  if (month < 0 || month > 11 || day < 1 || day > 31) return null;
+  if (year < 1900 || year > new Date().getFullYear()) return null;
+  return new Date(year, month, day);
+}
+
+function formatBirthday(text: string): string {
+  const c = text.replace(/\D/g, '');
+  if (c.length >= 4) return `${c.slice(0, 2)}/${c.slice(2, 4)}/${c.slice(4, 8)}`;
+  if (c.length >= 2) return `${c.slice(0, 2)}/${c.slice(2)}`;
+  return c;
+}
+
+function formatPhone(phone: string): string {
+  const d = phone.replace(/\D/g, '');
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  if (d.length === 11 && d[0] === '1') return `+1 (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
+  return phone;
+}
+
+function isValidPhone(phone: string): boolean {
+  const d = phone.replace(/\D/g, '');
+  return d.length === 10 || (d.length === 11 && d[0] === '1');
+}
+
+export default function BasicInfoScreen({ navigation }: any) {
+  const { session } = useAuth();
   const [name, setName] = useState('');
-  const [birthdayText, setBirthdayText] = useState('');
+  const [birthday, setBirthday] = useState('');
   const [gender, setGender] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phone, setPhone] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [showDateModal, setShowDateModal] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(2000);
-  const [selectedMonth, setSelectedMonth] = useState(0);
-  const [selectedDay, setSelectedDay] = useState(1);
 
-  // Calculate age from birthday
-  const calculateAge = (birthDate: Date): number => {
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+  const birthdayRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+
+  const clearError = (field: string) =>
+    setErrors((e) => { const n = { ...e }; delete n[field]; return n; });
+
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!name.trim()) next.name = 'Full name is required';
+    if (!birthday.trim()) {
+      next.birthday = 'Birthday is required';
+    } else {
+      const d = parseBirthday(birthday);
+      if (!d) next.birthday = 'Enter a valid date (MM/DD/YYYY)';
+      else if (calculateAge(d) < 18) next.birthday = 'You must be at least 18 years old';
     }
-    
-    return age;
-  };
-
-  const parseBirthday = (text: string): Date | null => {
-    // Expected format: MM/DD/YYYY
-    const parts = text.split('/');
-    if (parts.length !== 3) return null;
-    
-    const month = parseInt(parts[0], 10) - 1; // 0-indexed
-    const day = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
-    
-    if (isNaN(month) || isNaN(day) || isNaN(year)) return null;
-    if (month < 0 || month > 11) return null;
-    if (day < 1 || day > 31) return null;
-    if (year < 1900 || year > new Date().getFullYear()) return null;
-    
-    return new Date(year, month, day);
-  };
-
-  const validatePhoneNumber = (phone: string): boolean => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    
-    // Check if it's a valid US phone number (10 digits)
-    // or international format (11+ digits starting with 1)
-    return digitsOnly.length === 10 || (digitsOnly.length >= 11 && digitsOnly[0] === '1');
-  };
-
-  const formatPhoneNumber = (phone: string): string => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    
-    // Format as (XXX) XXX-XXXX for 10 digits
-    if (digitsOnly.length === 10) {
-      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
-    }
-    
-    // Format as +1 (XXX) XXX-XXXX for 11 digits starting with 1
-    if (digitsOnly.length === 11 && digitsOnly[0] === '1') {
-      return `+1 (${digitsOnly.slice(1, 4)}) ${digitsOnly.slice(4, 7)}-${digitsOnly.slice(7)}`;
-    }
-    
-    // Return as-is for other formats
-    return phone;
+    if (!gender) next.gender = 'Please select your gender';
+    if (!phone.trim()) next.phone = 'Phone number is required';
+    else if (!isValidPhone(phone)) next.phone = 'Enter a valid 10-digit US phone number';
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const handleNext = async () => {
-    // Validate required fields
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter your name');
-      return;
-    }
-
-    if (!birthdayText.trim()) {
-      Alert.alert('Error', 'Please enter your birthday');
-      return;
-    }
-
-    const birthday = parseBirthday(birthdayText);
-    if (!birthday) {
-      Alert.alert('Error', 'Please enter a valid birthday in MM/DD/YYYY format');
-      return;
-    }
-
-    if (!gender) {
-      Alert.alert('Error', 'Please select your gender');
-      return;
-    }
-
-    if (!phoneNumber.trim()) {
-      Alert.alert('Error', 'Please enter your phone number');
-      return;
-    }
-
-    if (!validatePhoneNumber(phoneNumber)) {
-      Alert.alert(
-        'Invalid Phone Number',
-        'Please enter a valid phone number (10 digits for US numbers)'
-      );
-      return;
-    }
-
-    const age = calculateAge(birthday);
-    if (age < 18) {
-      Alert.alert('Error', 'You must be at least 18 years old to use this app');
-      return;
-    }
-
+    if (!validate()) return;
     setLoading(true);
-
     try {
-      if (!session?.user?.id) {
-        throw new Error('No user session found');
-      }
-
-      // Format phone number before saving
-      const formattedPhone = formatPhoneNumber(phoneNumber);
-
-      // Use upsert to handle both profile creation and updates
-      const { error } = await supabase
-        .from('users')
-        .upsert({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: name.trim(),
-          birthday: birthday.toISOString(),
-          age,
-          gender,
-          phone_number: formattedPhone,
-          role: 'member',
-          is_dd: false,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'id'
-        });
-
-      if (error) throw error;
-
-      // Don't refresh user context here - it will cause navigation to re-evaluate
-      // profile completion and kick user back to BasicInfo since groupId is still null
-      // The user context will be refreshed when onboarding is complete
-      
-      // Navigate to group join screen
+      const d = parseBirthday(birthday)!;
+      await supabase.from('users').upsert({
+        id: session!.user.id,
+        email: session!.user.email || '',
+        name: name.trim(),
+        birthday: d.toISOString(),
+        age: calculateAge(d),
+        gender,
+        phone_number: formatPhone(phone),
+        role: 'member',
+        is_dd: false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
       navigation.navigate('GroupJoin');
-    } catch (error: any) {
-      console.error('Error saving basic info:', error);
-      Alert.alert('Error', error.message || 'Failed to save information. Please try again.');
+    } catch (err: any) {
+      setErrors({ submit: err?.message || 'Failed to save. Please try again.' });
     } finally {
       setLoading(false);
     }
   };
 
-  const formatBirthday = (text: string): string => {
-    // Auto-format as user types: MM/DD/YYYY
-    const cleaned = text.replace(/\D/g, '');
-    let formatted = cleaned;
-    
-    if (cleaned.length >= 2) {
-      formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
-    }
-    if (cleaned.length >= 4) {
-      formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4) + '/' + cleaned.slice(4, 8);
-    }
-    
-    return formatted;
-  };
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Welcome to DSober</Text>
-        <Text style={styles.subtitle}>Let's get to know you</Text>
-      </View>
+    <ScreenWrapper keyboard scroll>
+      <View style={styles.container}>
+        <StepProgress current={0} total={TOTAL_STEPS} label="Basic Info" />
 
-      <View style={styles.form}>
-        {/* Name Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Full Name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your full name"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-            autoCorrect={false}
-          />
+        <View style={styles.headingBlock}>
+          <Text style={styles.title}>Tell us about yourself</Text>
+          <Text style={styles.subtitle}>This information helps your chapter identify you.</Text>
         </View>
 
-        {/* Birthday Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Birthday *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="MM/DD/YYYY"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={birthdayText}
-            onChangeText={(text) => setBirthdayText(formatBirthday(text))}
-            keyboardType="numeric"
-            maxLength={10}
-          />
-          <Text style={styles.hint}>
-            Enter your date of birth (must be 18+)
-          </Text>
-        </View>
+        <Input
+          label="Full Name"
+          value={name}
+          onChangeText={(v) => { setName(v); clearError('name'); }}
+          error={errors.name}
+          autoCapitalize="words"
+          returnKeyType="next"
+          onSubmitEditing={() => birthdayRef.current?.focus()}
+        />
 
-        {/* Gender Selection */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Gender *</Text>
-          <View style={styles.genderContainer}>
-            {['Male', 'Female', 'Other', 'Prefer not to say'].map((option) => (
+        <Input
+          ref={birthdayRef}
+          label="Birthday"
+          value={birthday}
+          onChangeText={(v) => { setBirthday(formatBirthday(v)); clearError('birthday'); }}
+          error={errors.birthday}
+          hint="MM/DD/YYYY — must be 18+"
+          keyboardType="numeric"
+          maxLength={10}
+          returnKeyType="next"
+          onSubmitEditing={() => phoneRef.current?.focus()}
+        />
+
+        <View style={styles.genderBlock}>
+          <Text style={styles.fieldLabel}>Gender</Text>
+          <View style={styles.genderGrid}>
+            {GENDER_OPTIONS.map((opt) => (
               <TouchableOpacity
-                key={option}
-                style={[
-                  styles.genderButton,
-                  gender === option && styles.genderButtonSelected,
-                ]}
-                onPress={() => setGender(option)}
+                key={opt}
+                style={[styles.genderOption, gender === opt && styles.genderOptionActive]}
+                onPress={() => { setGender(opt); clearError('gender'); }}
+                activeOpacity={0.75}
               >
-                <Text
-                  style={[
-                    styles.genderButtonText,
-                    gender === option && styles.genderButtonTextSelected,
-                  ]}
-                >
-                  {option}
+                <Text style={[styles.genderText, gender === opt && styles.genderTextActive]}>
+                  {opt}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
+          {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
         </View>
 
-        {/* Phone Number Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phone Number *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="(555) 123-4567"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            keyboardType="phone-pad"
-            autoCorrect={false}
-            maxLength={20}
-          />
-          <Text style={styles.hint}>
-            Your phone number allows DDs and riders to coordinate pickups
-          </Text>
-        </View>
+        <Input
+          ref={phoneRef}
+          label="Phone Number"
+          value={phone}
+          onChangeText={(v) => { setPhone(v); clearError('phone'); }}
+          error={errors.phone}
+          hint="Allows DDs and riders to coordinate pickups"
+          keyboardType="phone-pad"
+          maxLength={20}
+          returnKeyType="done"
+          onSubmitEditing={handleNext}
+        />
 
-        {/* Next Button */}
-        <TouchableOpacity
-          style={[styles.nextButton, loading && styles.nextButtonDisabled]}
+        {errors.submit && <Text style={styles.errorText}>{errors.submit}</Text>}
+
+        <Button
           onPress={handleNext}
-          disabled={loading}
-        >
-          <Text style={styles.nextButtonText}>
-            {loading ? 'Saving...' : 'Next'}
-          </Text>
-        </TouchableOpacity>
+          label="Continue"
+          loading={loading}
+          fullWidth
+          size="lg"
+          style={styles.cta}
+        />
       </View>
-    </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing['3xl'],
   },
-  contentContainer: {
-    padding: 24,
-  },
-  header: {
-    marginBottom: 32,
-    marginTop: 40,
+  headingBlock: {
+    marginBottom: spacing.xl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
+    ...typography.title1,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
+    ...typography.callout,
+    color: colors.text.secondary,
+    lineHeight: 22,
   },
-  form: {
-    gap: 24,
+  fieldLabel: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginBottom: spacing.sm,
+    letterSpacing: 0.3,
   },
-  inputGroup: {
-    gap: 8,
+  genderBlock: {
+    marginBottom: spacing.base,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
+  genderGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: theme.colors.background.input,
-    color: theme.colors.text.primary,
+  genderOption: {
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.border.default,
+    backgroundColor: colors.bg.input,
   },
-  hint: {
-    fontSize: 14,
-    color: theme.colors.text.tertiary,
-    marginTop: 4,
+  genderOptionActive: {
+    borderColor: colors.brand.primary,
+    backgroundColor: colors.brand.faint,
   },
-  genderContainer: {
-    gap: 8,
+  genderText: {
+    ...typography.callout,
+    color: colors.text.secondary,
   },
-  genderButton: {
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: theme.colors.background.input,
-  },
-  genderButtonSelected: {
-    backgroundColor: theme.colors.primary.main,
-    borderColor: theme.colors.primary.main,
-  },
-  genderButtonText: {
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    textAlign: 'center',
-  },
-  genderButtonTextSelected: {
-    color: theme.colors.text.onPrimary,
+  genderTextActive: {
+    color: colors.text.primary,
     fontWeight: '600',
   },
-  nextButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 16,
+  errorText: {
+    ...typography.caption,
+    color: colors.ui.error,
+    marginTop: spacing.xs,
   },
-  nextButtonDisabled: {
-    backgroundColor: theme.colors.state.disabled,
-  },
-  nextButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 16,
-    fontWeight: '600',
+  cta: {
+    marginTop: spacing.lg,
   },
 });

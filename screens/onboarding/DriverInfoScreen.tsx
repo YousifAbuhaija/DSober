@@ -1,545 +1,309 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Image,
-  Platform,
-  Linking,
-} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, Alert, Linking, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { uploadImage } from '../../utils/storage';
-import { theme } from '../../theme/colors';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import StepProgress from '../../components/ui/StepProgress';
+import { colors, spacing, typography, radii } from '../../theme';
 
-interface DriverInfoScreenProps {
-  navigation: any;
-  route?: {
-    params?: {
-      mode?: 'onboarding' | 'upgrade';
-    };
-  };
+const TOTAL_STEPS = 8;
+
+function isValidPhone(phone: string): boolean {
+  const d = phone.replace(/\D/g, '');
+  return d.length === 10 || (d.length === 11 && d[0] === '1');
+}
+function formatPhone(phone: string): string {
+  const d = phone.replace(/\D/g, '');
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  if (d.length === 11 && d[0] === '1') return `+1 (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
+  return phone;
 }
 
-export default function DriverInfoScreen({ navigation, route }: DriverInfoScreenProps) {
-  const { session, refreshUser, user } = useAuth();
-  const mode = route?.params?.mode;
+export default function DriverInfoScreen({ navigation, route }: any) {
+  const { session, user, refreshUser } = useAuth();
+  const mode: 'onboarding' | 'upgrade' = route?.params?.mode ?? 'onboarding';
+
   const [carMake, setCarMake] = useState('');
   const [carModel, setCarModel] = useState('');
   const [carPlate, setCarPlate] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [licensePhotoUri, setLicensePhotoUri] = useState<string | null>(null);
+  const [phone, setPhone] = useState('');
+  const [licenseUri, setLicenseUri] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  // Pre-fill phone number if already provided
-  React.useEffect(() => {
-    if (user?.phoneNumber) {
-      setPhoneNumber(user.phoneNumber);
-    }
+  const modelRef = useRef<TextInput>(null);
+  const plateRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (user?.phoneNumber) setPhone(user.phoneNumber);
   }, [user]);
 
-  const validatePhoneNumber = (phone: string): boolean => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    
-    // Check if it's a valid US phone number (10 digits)
-    // or international format (11+ digits starting with 1)
-    return digitsOnly.length === 10 || (digitsOnly.length >= 11 && digitsOnly[0] === '1');
-  };
+  const clearErr = (k: string) => setErrors((e) => { const n = { ...e }; delete n[k]; return n; });
 
-  const formatPhoneNumber = (phone: string): string => {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    
-    // Format as (XXX) XXX-XXXX for 10 digits
-    if (digitsOnly.length === 10) {
-      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
-    }
-    
-    // Format as +1 (XXX) XXX-XXXX for 11 digits starting with 1
-    if (digitsOnly.length === 11 && digitsOnly[0] === '1') {
-      return `+1 (${digitsOnly.slice(1, 4)}) ${digitsOnly.slice(4, 7)}-${digitsOnly.slice(7)}`;
-    }
-    
-    // Return as-is for other formats
-    return phone;
-  };
-
-  const requestPermissions = async () => {
+  const pickLicense = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
-        'Permission Required',
-        'Photo library access is needed to upload your driver\'s license. Please enable it in your device Settings > DSober > Photos.',
+        'Photo Access Required',
+        'DSober needs photo library access to upload your license.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => {
-            // On iOS, this will open the app settings
-            // On Android, it will open the app info page
-            if (Platform.OS === 'ios') {
-              Linking.openURL('app-settings:');
-            } else {
-              Linking.openSettings();
-            }
-          }}
+          { text: 'Open Settings', onPress: () => Platform.OS === 'ios' ? Linking.openURL('app-settings:') : Linking.openSettings() },
         ]
       );
-      return false;
+      return;
     }
-    return true;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setLicenseUri(result.assets[0].uri);
+      clearErr('license');
+    }
   };
 
-  const handlePhotoUpload = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        
-        // Validate image format
-        const validFormats = ['jpg', 'jpeg', 'png'];
-        const fileExtension = asset.uri.split('.').pop()?.toLowerCase();
-        
-        if (fileExtension && !validFormats.includes(fileExtension)) {
-          Alert.alert(
-            'Invalid Image Format',
-            'Please select a JPG or PNG image file. Other formats are not supported.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-        
-        setLicensePhotoUri(asset.uri);
-      }
-    } catch (error: any) {
-      console.error('Error picking image:', error);
-      Alert.alert(
-        'Image Selection Failed',
-        'Unable to select image. Please check your photo library and try again.',
-        [{ text: 'OK' }]
-      );
-    }
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!carMake.trim()) next.carMake = 'Car make is required';
+    if (!carModel.trim()) next.carModel = 'Car model is required';
+    if (!carPlate.trim()) next.carPlate = 'License plate is required';
+    if (phone.trim() && !isValidPhone(phone)) next.phone = 'Enter a valid 10-digit US number';
+    if (!licenseUri) next.license = "Driver's license photo is required";
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const handleNext = async () => {
-    // Validate required fields with specific error messages
-    if (!carMake.trim()) {
-      Alert.alert(
-        'Car Make Required',
-        'Please enter your vehicle\'s make (e.g., Toyota, Honda, Ford).',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    if (!carModel.trim()) {
-      Alert.alert(
-        'Car Model Required',
-        'Please enter your vehicle\'s model (e.g., Camry, Civic, F-150).',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    if (!carPlate.trim()) {
-      Alert.alert(
-        'License Plate Required',
-        'Please enter your vehicle\'s license plate number.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    // Phone number validation (optional here since it's already collected in BasicInfo)
-    if (phoneNumber.trim() && !validatePhoneNumber(phoneNumber)) {
-      Alert.alert(
-        'Invalid Phone Number',
-        'Please enter a valid phone number:\n• 10 digits for US numbers (e.g., 5551234567)\n• 11 digits starting with 1 for international format',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    if (!licensePhotoUri) {
-      Alert.alert(
-        'License Photo Required',
-        'Please upload a clear photo of your driver\'s license for verification.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
+    if (!validate()) return;
     setLoading(true);
-
     try {
-      if (!session?.user?.id) {
-        throw new Error('Session expired. Please log in again.');
-      }
-
-      // Upload license photo to Supabase storage
-      setUploadingPhoto(true);
-      let licensePhotoUrl: string;
-      
-      try {
-        licensePhotoUrl = await uploadImage(
-          licensePhotoUri,
-          'license-photos',
-          `${session.user.id}/license.jpg`
-        );
-      } catch (uploadError: any) {
-        console.error('Upload error:', uploadError);
-        setUploadingPhoto(false);
-        setLoading(false);
-        
-        Alert.alert(
-          'Upload Failed',
-          'Failed to upload your license photo. Please check your internet connection and try again.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Retry', onPress: () => handleNext() }
-          ]
-        );
-        return;
-      }
-      
-      setUploadingPhoto(false);
-
-      // Format phone number before saving (if provided)
-      const formattedPhone = phoneNumber.trim() ? formatPhoneNumber(phoneNumber) : user?.phoneNumber;
-
-      // Update user profile with driver information
-      const updateData: any = {
+      const licenseUrl = await uploadImage(licenseUri!, 'license-photos', `${session!.user.id}/license.jpg`);
+      const update: Record<string, any> = {
         car_make: carMake.trim(),
         car_model: carModel.trim(),
         car_plate: carPlate.trim().toUpperCase(),
-        license_photo_url: licensePhotoUrl,
+        license_photo_url: licenseUrl,
         updated_at: new Date().toISOString(),
       };
+      if (phone.trim()) update.phone_number = formatPhone(phone);
+      if (mode === 'upgrade') { update.is_dd = true; update.dd_status = 'active'; }
 
-      // Only update phone number if it was changed
-      if (formattedPhone) {
-        updateData.phone_number = formattedPhone;
-      }
+      await supabase.from('users').update(update).eq('id', session!.user.id);
 
-      // If in upgrade mode, also update DD status
       if (mode === 'upgrade') {
-        updateData.is_dd = true;
-        updateData.dd_status = 'active';
-      }
-
-      const { error } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', session.user.id);
-
-      if (error) {
-        console.error('Database update error:', error);
-        throw new Error('Failed to update your account. Please try again or contact support if the problem persists.');
-      }
-
-      // Handle navigation based on mode
-      if (mode === 'upgrade') {
-        // Refresh user context to reflect DD status change
-        try {
-          await refreshUser();
-        } catch (refreshError) {
-          console.error('Refresh error:', refreshError);
-          // Continue anyway - the real-time subscription will update the user
-        }
-        
-        // Show success message and navigate back
-        Alert.alert(
-          'Success!',
-          'You are now a designated driver! You can start DD sessions from events.',
-          [{ 
-            text: 'OK', 
-            onPress: () => navigation.goBack() 
-          }]
-        );
+        await refreshUser();
+        navigation.goBack();
       } else {
-        // Don't refresh user context here - it will cause navigation to re-evaluate
-        // profile completion and potentially kick user back to BasicInfo
-        // The user context will be refreshed when onboarding is complete
-        
-        // Navigate to profile photo screen
         navigation.navigate('ProfilePhoto');
       }
-    } catch (error: any) {
-      console.error('Error saving driver info:', error);
-      
-      const errorMessage = error.message || 'An unexpected error occurred while saving your information.';
-      
-      Alert.alert(
-        'Save Failed',
-        errorMessage,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Try Again', onPress: () => handleNext() }
-        ]
-      );
+    } catch (err: any) {
+      setErrors({ submit: err?.message || 'Failed to save. Try again.' });
     } finally {
       setLoading(false);
-      setUploadingPhoto(false);
     }
   };
 
+  const stepIndex = mode === 'upgrade' ? 0 : 3;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Driver Information</Text>
-        <Text style={styles.subtitle}>
-          Provide your vehicle details and driver's license
-        </Text>
-      </View>
+    <ScreenWrapper keyboard scroll>
+      <View style={styles.container}>
+        {mode === 'onboarding' && (
+          <StepProgress current={stepIndex} total={TOTAL_STEPS} label="Driver Info" />
+        )}
 
-      <View style={styles.form}>
-        {/* Car Make Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Car Make *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., Toyota, Honda, Ford"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={carMake}
-            onChangeText={setCarMake}
-            autoCapitalize="words"
-            autoCorrect={false}
-          />
+        <View style={styles.headingBlock}>
+          <Text style={styles.title}>Driver Information</Text>
+          <Text style={styles.subtitle}>Vehicle details and license for your DD profile.</Text>
         </View>
 
-        {/* Car Model Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Car Model *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., Camry, Civic, F-150"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={carModel}
-            onChangeText={setCarModel}
-            autoCapitalize="words"
-            autoCorrect={false}
-          />
-        </View>
+        <Input
+          label="Car Make"
+          value={carMake}
+          onChangeText={(v) => { setCarMake(v); clearErr('carMake'); }}
+          error={errors.carMake}
+          placeholder="e.g. Toyota, Honda, Ford"
+          autoCapitalize="words"
+          returnKeyType="next"
+          onSubmitEditing={() => modelRef.current?.focus()}
+        />
+        <Input
+          ref={modelRef}
+          label="Car Model"
+          value={carModel}
+          onChangeText={(v) => { setCarModel(v); clearErr('carModel'); }}
+          error={errors.carModel}
+          placeholder="e.g. Camry, Civic, F-150"
+          autoCapitalize="words"
+          returnKeyType="next"
+          onSubmitEditing={() => plateRef.current?.focus()}
+        />
+        <Input
+          ref={plateRef}
+          label="License Plate"
+          value={carPlate}
+          onChangeText={(v) => { setCarPlate(v); clearErr('carPlate'); }}
+          error={errors.carPlate}
+          placeholder="e.g. ABC1234"
+          autoCapitalize="characters"
+          maxLength={10}
+          returnKeyType="next"
+          onSubmitEditing={() => phoneRef.current?.focus()}
+        />
+        <Input
+          ref={phoneRef}
+          label="Phone Number"
+          value={phone}
+          onChangeText={(v) => { setPhone(v); clearErr('phone'); }}
+          error={errors.phone}
+          hint="Update if different from what you entered earlier"
+          keyboardType="phone-pad"
+          maxLength={20}
+          returnKeyType="done"
+        />
 
-        {/* License Plate Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>License Plate *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., ABC1234"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={carPlate}
-            onChangeText={setCarPlate}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={10}
-          />
-        </View>
-
-        {/* Phone Number Input (optional - can update if needed) */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phone Number</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., (555) 123-4567"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            keyboardType="phone-pad"
-            autoCorrect={false}
-            maxLength={20}
-          />
-          <Text style={styles.hint}>
-            Update your phone number if needed (already provided during signup)
-          </Text>
-        </View>
-
-        {/* License Photo Upload */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Driver's License Photo *</Text>
-          <Text style={styles.hint}>
-            Upload a clear photo of your driver's license for verification
-          </Text>
-          
-          {licensePhotoUri ? (
-            <View style={styles.photoPreviewContainer}>
-              <Image
-                source={{ uri: licensePhotoUri }}
-                style={styles.photoPreview}
-                resizeMode="cover"
-              />
-              <TouchableOpacity
-                style={styles.changePhotoButton}
-                onPress={handlePhotoUpload}
-              >
-                <Text style={styles.changePhotoText}>Change Photo</Text>
+        {/* License photo */}
+        <View style={styles.photoBlock}>
+          <Text style={styles.fieldLabel}>Driver's License Photo</Text>
+          {licenseUri ? (
+            <View style={styles.photoPreviewWrap}>
+              <Image source={{ uri: licenseUri }} style={styles.photoPreview} />
+              <TouchableOpacity style={styles.changePhoto} onPress={pickLicense}>
+                <Ionicons name="camera-outline" size={16} color={colors.brand.primary} />
+                <Text style={styles.changePhotoText}>Change</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={handlePhotoUpload}
+              style={[styles.uploadArea, errors.license ? styles.uploadAreaError : null]}
+              onPress={pickLicense}
+              activeOpacity={0.75}
             >
-              <Text style={styles.uploadButtonText}>📷 Upload License Photo</Text>
+              <Ionicons name="id-card-outline" size={28} color={errors.license ? colors.ui.error : colors.text.tertiary} />
+              <Text style={[styles.uploadText, errors.license ? { color: colors.ui.error } : null]}>
+                Upload license photo
+              </Text>
+              <Text style={styles.uploadHint}>JPG or PNG, max 10MB</Text>
             </TouchableOpacity>
           )}
+          {errors.license && <Text style={styles.errorText}>{errors.license}</Text>}
         </View>
 
-        {/* Next Button */}
-        <TouchableOpacity
-          style={[styles.nextButton, loading && styles.nextButtonDisabled]}
-          onPress={handleNext}
-          disabled={loading}
-        >
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color={theme.colors.text.onPrimary} />
-              <Text style={styles.nextButtonText}>
-                {uploadingPhoto ? 'Uploading photo...' : 'Saving...'}
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.nextButtonText}>Continue</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Your license photo is stored securely and only visible to chapter admins.
+        <Text style={styles.privacyNote}>
+          Your license is stored securely and only visible to chapter admins.
         </Text>
+
+        {errors.submit && <Text style={styles.errorText}>{errors.submit}</Text>}
+
+        <Button
+          onPress={handleNext}
+          label={loading ? (mode === 'upgrade' ? 'Saving…' : 'Uploading…') : (mode === 'upgrade' ? 'Save Changes' : 'Continue')}
+          loading={loading}
+          fullWidth
+          size="lg"
+          style={styles.cta}
+        />
       </View>
-    </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing['3xl'],
   },
-  contentContainer: {
-    padding: 24,
-  },
-  header: {
-    marginBottom: 32,
-    marginTop: 20,
+  headingBlock: {
+    marginBottom: spacing.xl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
+    ...typography.title1,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
+    ...typography.callout,
+    color: colors.text.secondary,
     lineHeight: 22,
   },
-  form: {
-    gap: 24,
+  fieldLabel: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginBottom: spacing.sm,
+    letterSpacing: 0.3,
   },
-  inputGroup: {
-    gap: 8,
+  photoBlock: {
+    marginBottom: spacing.base,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: theme.colors.background.input,
-    color: theme.colors.text.primary,
-  },
-  hint: {
-    fontSize: 14,
-    color: theme.colors.text.tertiary,
-  },
-  uploadButton: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary.light,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    backgroundColor: theme.colors.primary.dark,
-    borderStyle: 'dashed',
-  },
-  uploadButtonText: {
-    fontSize: 16,
-    color: theme.colors.primary.light,
-    fontWeight: '600',
-  },
-  photoPreviewContainer: {
-    gap: 12,
+  photoPreviewWrap: {
+    position: 'relative',
   },
   photoPreview: {
     width: '100%',
-    height: 200,
-    borderRadius: 8,
-    backgroundColor: theme.colors.background.elevated,
+    height: 180,
+    borderRadius: radii.md,
+    backgroundColor: colors.bg.elevated,
   },
-  changePhotoButton: {
-    borderWidth: 1,
-    borderColor: theme.colors.primary.light,
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-  },
-  changePhotoText: {
-    fontSize: 16,
-    color: theme.colors.primary.light,
-    fontWeight: '600',
-  },
-  nextButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  nextButtonDisabled: {
-    backgroundColor: theme.colors.state.disabled,
-  },
-  loadingContainer: {
+  changePhoto: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    right: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
+    backgroundColor: colors.bg.elevated,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.full,
   },
-  nextButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 16,
+  changePhotoText: {
+    ...typography.caption,
+    color: colors.brand.primary,
     fontWeight: '600',
   },
-  footer: {
-    marginTop: 24,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.default,
+  uploadArea: {
+    borderWidth: 1.5,
+    borderColor: colors.border.default,
+    borderStyle: 'dashed',
+    borderRadius: radii.md,
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.bg.input,
   },
-  footerText: {
-    fontSize: 14,
-    color: theme.colors.text.tertiary,
+  uploadAreaError: {
+    borderColor: colors.ui.error,
+  },
+  uploadText: {
+    ...typography.callout,
+    color: colors.text.secondary,
+    fontWeight: '600',
+  },
+  uploadHint: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+  },
+  privacyNote: {
+    ...typography.caption,
+    color: colors.text.tertiary,
     textAlign: 'center',
-    lineHeight: 20,
+    marginBottom: spacing.base,
+  },
+  errorText: {
+    ...typography.caption,
+    color: colors.ui.error,
+    marginTop: spacing.xs,
+  },
+  cta: {
+    marginTop: spacing.sm,
   },
 });

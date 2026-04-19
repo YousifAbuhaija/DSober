@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string): Promise<{ needsEmailConfirmation: boolean }> => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -205,10 +205,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
 
     // Profile will be created when user completes BasicInfo screen
-    // Set user to null initially - they'll go through onboarding
     if (data.user) {
       setUser(null);
     }
+
+    // If no session came back, Supabase requires email confirmation
+    return { needsEmailConfirmation: !data.session };
   };
 
   const signOut = async () => {
