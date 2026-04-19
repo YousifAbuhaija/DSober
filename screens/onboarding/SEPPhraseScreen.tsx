@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { 
   useAudioRecorder,
   useAudioRecorderState,
   useAudioPlayer,
@@ -15,570 +9,232 @@ import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
 } from 'expo-audio';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { uploadAudio } from '../../utils/storage';
 import { supabase } from '../../lib/supabase';
-import { theme } from '../../theme/colors';
+import StepProgress from '../../components/ui/StepProgress';
+import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
+import EmptyState from '../../components/ui/EmptyState';
+import { colors, spacing, typography, radii } from '../../theme';
 
-type SEPPhraseRouteParams = {
+type RouteParams = {
   mode: 'baseline' | 'attempt';
   reactionAvgMs: number;
   eventId?: string;
 };
 
-const FIXED_PHRASE = "I am the designated driver for tonight's event";
+const PHRASE = "I am the designated driver for tonight's event";
 
 export default function SEPPhraseScreen() {
   const navigation = useNavigation<StackNavigationProp<any>>();
-  const route = useRoute<RouteProp<{ params: SEPPhraseRouteParams }, 'params'>>();
+  const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const { mode, reactionAvgMs, eventId } = route.params;
-  
+
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(audioRecorder, 100); // Update every 100ms for smooth timer
+  const recorderState = useAudioRecorderState(audioRecorder, 100);
   const audioPlayer = useAudioPlayer(null);
-  const [phraseDurationSec, setPhraseDurationSec] = useState<number | null>(null);
+
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [duration, setDuration] = useState<number | null>(null);
   const [audioUri, setAudioUri] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    // Request audio permissions on mount
-    requestAudioPermission();
+    (async () => {
+      const { granted } = await requestRecordingPermissionsAsync();
+      setHasPermission(granted);
+      if (granted) {
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      }
+    })();
   }, []);
 
-  const requestAudioPermission = async () => {
-    try {
-      const { granted } = await requestRecordingPermissionsAsync();
-      if (!granted) {
-        Alert.alert(
-          'Permission Required',
-          'Microphone access is required for phrase recording.',
-          [{ text: 'OK' }]
-        );
-        return false;
-      }
-      
-      // Set audio mode to allow recording on iOS
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Error requesting audio permission:', error);
-      return false;
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      console.log('Starting recording...');
-      
-      // Ensure permissions and audio mode are set before recording
-      const hasPermission = await requestAudioPermission();
-      console.log('Has permission:', hasPermission);
-      
-      if (!hasPermission) {
-        Alert.alert('Error', 'Microphone permission is required to record.');
-        return;
-      }
-      
-      // Prepare the recorder if not ready
-      if (!recorderState.canRecord) {
-        console.log('Preparing recorder...');
-        await audioRecorder.prepareToRecordAsync();
-        console.log('Recorder prepared');
-      }
-      
-      console.log('About to call audioRecorder.record()');
-      await audioRecorder.record();
-      console.log('Recording started successfully');
-    } catch (error: any) {
-      console.error('Failed to start recording:', error);
-      
-      // Check if error is due to audio session conflict (call, music, etc.)
-      const errorMessage = error?.message || '';
-      if (errorMessage.includes('Session activation failed') || 
-          errorMessage.includes('audio session') ||
-          errorMessage.includes('configure audio')) {
-        Alert.alert(
-          'Audio In Use',
-          'Cannot record audio. Please end any phone calls, close other apps using the microphone, and try again.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert('Error', 'Failed to start recording. Please try again.');
-      }
-    }
-  };
-
-  const stopRecording = async () => {
-    try {
-      await audioRecorder.stop();
-      
-      // Get the recording URI from the recorder
-      const uri = audioRecorder.uri;
-      
-      if (uri) {
-        // Get the final duration from the recorder state (in seconds)
-        const duration = recorderState.durationMillis / 1000;
-        setPhraseDurationSec(duration);
-        setAudioUri(uri);
-      } else {
-        Alert.alert('Error', 'Failed to get recording. Please try again.');
-      }
-    } catch (error) {
-      console.error('Failed to stop recording:', error);
-      Alert.alert('Error', 'Failed to stop recording. Please try again.');
-    }
-  };
-
-  const handleRecordToggle = () => {
-    if (recorderState.isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-
-  const handleRetry = () => {
-    setPhraseDurationSec(null);
-    setAudioUri(null);
-  };
-
-  const handlePlayback = async () => {
-    if (!audioUri) return;
-
-    try {
-      if (isPlaying) {
-        // Stop playback
-        audioPlayer.pause();
-        setIsPlaying(false);
-      } else {
-        // Set audio mode for playback (louder volume)
-        await setAudioModeAsync({
-          allowsRecording: false,
-          playsInSilentMode: true,
-        });
-        
-        // Replace the audio source and play
-        audioPlayer.replace(audioUri);
-        audioPlayer.play();
-        setIsPlaying(true);
-        
-        // Listen for when playback finishes
-        const checkPlayback = setInterval(() => {
-          if (!audioPlayer.playing) {
-            setIsPlaying(false);
-            clearInterval(checkPlayback);
-          }
-        }, 100);
-      }
-    } catch (error) {
-      console.error('Error with playback:', error);
-      setIsPlaying(false);
-      Alert.alert('Error', 'Failed to play recording.');
-    }
-  };
-
-  const handleNext = async () => {
-    if (!audioUri || phraseDurationSec === null) {
-      Alert.alert('Error', 'Please record the phrase first.');
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Upload audio to Supabase storage
-      const timestamp = Date.now();
-      const audioPath = `${user.id}/${timestamp}.m4a`;
-      const audioUrl = await uploadAudio(audioUri, 'sep-audio', audioPath);
-
-      // Navigate to next screen with all data
-      console.log('SEPPhraseScreen navigating with:', {
-        mode,
-        eventId,
-        reactionAvgMs,
-        phraseDurationSec,
-        audioUrl,
-      });
-      
-      if (mode === 'baseline') {
-        navigation.navigate('SEPSelfie', {
-          mode: 'baseline',
-          reactionAvgMs,
-          phraseDurationSec,
-          audioUrl,
-        });
-      } else {
-        navigation.navigate('SEPSelfie', {
-          mode: 'attempt',
-          eventId,
-          reactionAvgMs,
-          phraseDurationSec,
-          audioUrl,
-        });
-      }
-    } catch (error) {
-      console.error('Error uploading audio:', error);
-      Alert.alert('Error', 'Failed to upload audio. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleStart = () => {
-    setShowInstructions(false);
-  };
-
-  if (showInstructions) {
+  if (hasPermission === false) {
     return (
-      <View style={styles.container}>
-        <View style={styles.instructionsContainer}>
-          <Text style={styles.title}>Phrase Recording Test</Text>
-          <Text style={styles.subtitle}>
-            {mode === 'baseline'
-              ? 'Let\'s establish your baseline speech duration'
-              : 'Record the phrase at your current pace'}
-          </Text>
-
-          <View style={styles.instructionsBox}>
-            <Text style={styles.instructionsTitle}>How it works:</Text>
-            <Text style={styles.instructionsText}>
-              1. Read the phrase displayed on screen{'\n'}
-              2. Press "Start Recording" and speak clearly{'\n'}
-              3. Press "Stop Recording" when finished{'\n'}
-              4. Review your recording duration{'\n'}
-              5. Re-record if needed or continue
-            </Text>
-          </View>
-
-          <TouchableOpacity style={styles.startButton} onPress={handleStart}>
-            <Text style={styles.startButtonText}>Start Test</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+        <EmptyState
+          icon="mic-off-outline"
+          title="Microphone access required"
+          subtitle="DSober needs microphone access to record your phrase. Please enable it in Settings."
+        />
+      </SafeAreaView>
     );
   }
 
+  const startRecording = async () => {
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+    if (!recorderState.canRecord) await audioRecorder.prepareToRecordAsync();
+    await audioRecorder.record();
+  };
+
+  const stopRecording = async () => {
+    await audioRecorder.stop();
+    const uri = audioRecorder.uri;
+    if (uri) {
+      setDuration(recorderState.durationMillis / 1000);
+      setAudioUri(uri);
+    }
+  };
+
+  const toggleRecord = () => recorderState.isRecording ? stopRecording() : startRecording();
+
+  const handlePlayback = async () => {
+    if (!audioUri) return;
+    if (isPlaying) {
+      audioPlayer.pause();
+      setIsPlaying(false);
+    } else {
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      audioPlayer.replace(audioUri);
+      audioPlayer.play();
+      setIsPlaying(true);
+      const check = setInterval(() => {
+        if (!audioPlayer.playing) { setIsPlaying(false); clearInterval(check); }
+      }, 100);
+    }
+  };
+
+  const handleRetry = () => { setDuration(null); setAudioUri(null); setIsPlaying(false); };
+
+  const handleNext = async () => {
+    if (!audioUri || duration === null) return;
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const path = `${user.id}/${Date.now()}.m4a`;
+      const audioUrl = await uploadAudio(audioUri, 'sep-audio', path);
+      const params = mode === 'baseline'
+        ? { mode: 'baseline', reactionAvgMs, phraseDurationSec: duration, audioUrl }
+        : { mode: 'attempt', eventId, reactionAvgMs, phraseDurationSec: duration, audioUrl };
+      navigation.navigate('SEPSelfie', params);
+    } catch {
+      // handled silently — user can retry
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const recorded = duration !== null;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Phrase Display */}
-        <View style={styles.phraseContainer}>
-          <Text style={styles.phraseLabel}>Read this phrase:</Text>
-          <View style={styles.phraseBox}>
-            <Text style={styles.phraseText}>{FIXED_PHRASE}</Text>
-          </View>
-        </View>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <View style={styles.container}>
+        <StepProgress current={1} total={3} label="Phrase Recording" />
 
-        {/* Recording Controls */}
-        <View style={styles.controlsContainer}>
-          {phraseDurationSec === null ? (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.recordButton,
-                  recorderState.isRecording && styles.recordButtonActive,
-                ]}
-                onPress={handleRecordToggle}
-                disabled={isUploading}
-              >
-                <View style={[
-                  styles.recordButtonInner,
-                  recorderState.isRecording && styles.recordButtonInnerActive,
-                ]} />
+        <View style={styles.body}>
+          <Text style={styles.title}>Read the phrase</Text>
+          <Text style={styles.subtitle}>Speak clearly at your natural pace.</Text>
+
+          <Card style={styles.phraseCard}>
+            <Text style={styles.phraseText}>"{PHRASE}"</Text>
+          </Card>
+
+          {recorded ? (
+            <View style={styles.resultBlock}>
+              <View style={styles.durationRow}>
+                <Text style={styles.durationValue}>{duration.toFixed(2)}</Text>
+                <Text style={styles.durationUnit}>sec</Text>
+              </View>
+
+              <TouchableOpacity style={styles.playBtn} onPress={handlePlayback}>
+                <Ionicons
+                  name={isPlaying ? 'pause-circle' : 'play-circle'}
+                  size={48}
+                  color={colors.brand.primary}
+                />
+                <Text style={styles.playLabel}>{isPlaying ? 'Pause' : 'Play back'}</Text>
               </TouchableOpacity>
-
-              <Text style={styles.recordLabel}>
-                {recorderState.isRecording ? 'Stop Recording' : 'Start Recording'}
-              </Text>
-
-              {recorderState.isRecording && (
-                <View style={styles.durationContainer}>
-                  <Text style={styles.durationText}>
-                    {(recorderState.durationMillis / 1000).toFixed(2)}s
-                  </Text>
-                </View>
-              )}
-            </>
+            </View>
           ) : (
-            <>
-              <View style={styles.resultContainer}>
-                <Text style={styles.resultLabel}>Recording Duration:</Text>
-                <Text style={styles.resultValue}>
-                  {phraseDurationSec.toFixed(2)}s
-                </Text>
-              </View>
-
+            <View style={styles.recordBlock}>
               <TouchableOpacity
-                style={[
-                  styles.playbackButton,
-                  isPlaying && styles.playbackButtonActive
-                ]}
-                onPress={handlePlayback}
-                disabled={isUploading}
+                style={[styles.recordBtn, recorderState.isRecording && styles.recordBtnActive]}
+                onPress={toggleRecord}
+                activeOpacity={0.85}
               >
-                <Text style={styles.playbackButtonText}>
-                  {isPlaying ? '⏸ Stop Playback' : '▶ Play Recording'}
-                </Text>
+                <View style={[styles.recordDot, recorderState.isRecording && styles.recordDotActive]} />
               </TouchableOpacity>
-
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={styles.retryButton}
-                  onPress={handleRetry}
-                  disabled={isUploading}
-                >
-                  <Text style={styles.retryButtonText}>Record Again</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.nextButton}
-                  onPress={handleNext}
-                  disabled={isUploading}
-                >
-                  {isUploading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.nextButtonText}>Next</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </>
+              <Text style={styles.recordLabel}>
+                {recorderState.isRecording
+                  ? `${(recorderState.durationMillis / 1000).toFixed(1)}s — tap to stop`
+                  : 'Tap to record'}
+              </Text>
+            </View>
           )}
         </View>
 
-        {/* Instructions */}
-        {!audioRecorder.isRecording && phraseDurationSec === null && (
-          <View style={styles.tipsContainer}>
-            <Text style={styles.tipsTitle}>Tips:</Text>
-            <Text style={styles.tipsText}>
-              • Speak at your normal pace{'\n'}
-              • Speak clearly and naturally{'\n'}
-              • Find a quiet location
-            </Text>
-          </View>
-        )}
+        <View style={styles.actions}>
+          {recorded && (
+            <Button variant="secondary" onPress={handleRetry} label="Record Again" fullWidth style={styles.retryBtn} />
+          )}
+          <Button
+            onPress={handleNext}
+            label="Continue"
+            loading={uploading}
+            disabled={!recorded}
+            fullWidth
+            size="lg"
+          />
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'space-between',
-  },
-  instructionsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  instructionsBox: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 32,
-  },
-  instructionsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 12,
-  },
-  instructionsText: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    lineHeight: 24,
-  },
-  startButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  startButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  phraseContainer: {
-    marginTop: 20,
-  },
-  phraseLabel: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  phraseBox: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 24,
-    borderWidth: 2,
-    borderColor: theme.colors.primary.main,
+  safe: { flex: 1, backgroundColor: colors.bg.canvas },
+  container: { flex: 1, paddingHorizontal: spacing.xl, paddingBottom: spacing['2xl'] },
+  body: { flex: 1, justifyContent: 'center' },
+  title: { ...typography.title2, color: colors.text.primary, textAlign: 'center', marginBottom: spacing.xs },
+  subtitle: { ...typography.callout, color: colors.text.secondary, textAlign: 'center', marginBottom: spacing.xl },
+  phraseCard: {
+    borderWidth: 1,
+    borderColor: colors.brand.primary,
+    backgroundColor: colors.brand.faint,
+    marginBottom: spacing['2xl'],
   },
   phraseText: {
-    fontSize: 20,
-    color: theme.colors.text.primary,
+    ...typography.title3,
+    color: colors.text.primary,
     textAlign: 'center',
     lineHeight: 28,
-    fontWeight: '500',
+    fontStyle: 'italic',
   },
-  controlsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recordButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: theme.colors.background.primary,
+  recordBlock: { alignItems: 'center', gap: spacing.base },
+  recordBtn: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     borderWidth: 4,
-    borderColor: '#FF3B30', // Preserved functional red for recording
+    borderColor: colors.ui.error,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+    backgroundColor: colors.bg.surface,
   },
-  recordButtonActive: {
-    borderColor: '#FF3B30', // Preserved functional red for recording
-    backgroundColor: '#FFE5E5',
+  recordBtnActive: { borderColor: colors.ui.error, backgroundColor: '#2A0A0A' },
+  recordDot: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.ui.error,
   },
-  recordButtonInner: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#FF3B30', // Preserved functional red for recording
-  },
-  recordButtonInnerActive: {
+  recordDotActive: {
     borderRadius: 8,
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
   },
-  recordLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-  },
-  durationContainer: {
-    marginTop: 16,
-    backgroundColor: theme.colors.background.elevated,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  durationText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FF3B30', // Preserved functional red for recording
-  },
-  resultContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  resultLabel: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    marginBottom: 8,
-  },
-  resultValue: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: theme.colors.functional.success,
-  },
-  playbackButton: {
-    backgroundColor: theme.colors.functional.success,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-    width: '100%',
-  },
-  playbackButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  retryButton: {
-    flex: 1,
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-  },
-  retryButtonText: {
-    color: theme.colors.text.primary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  nextButton: {
-    flex: 1,
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  nextButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  tipsContainer: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  tipsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.text.secondary,
-    marginBottom: 8,
-  },
-  tipsText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
-  },
-  playbackButtonActive: {
-    backgroundColor: theme.colors.functional.warning,
-  },
+  recordLabel: { ...typography.callout, color: colors.text.secondary },
+  resultBlock: { alignItems: 'center', gap: spacing.xl },
+  durationRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
+  durationValue: { fontSize: 56, fontWeight: '700', color: colors.text.primary, lineHeight: 64 },
+  durationUnit: { ...typography.title3, color: colors.text.tertiary },
+  playBtn: { alignItems: 'center', gap: spacing.xs },
+  playLabel: { ...typography.caption, color: colors.brand.primary, fontWeight: '600' },
+  actions: { gap: spacing.md },
+  retryBtn: {},
 });

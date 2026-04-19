@@ -1,21 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  Image,
-} from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import React, { useState, useRef } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { uploadImage } from '../../utils/storage';
 import { supabase } from '../../lib/supabase';
-import { theme } from '../../theme/colors';
+import StepProgress from '../../components/ui/StepProgress';
+import Button from '../../components/ui/Button';
+import LoadingScreen from '../../components/ui/LoadingScreen';
+import EmptyState from '../../components/ui/EmptyState';
+import { colors, spacing, typography, radii } from '../../theme';
 
-type SEPSelfieRouteParams = {
+type RouteParams = {
   mode: 'baseline' | 'attempt';
   reactionAvgMs: number;
   phraseDurationSec: number;
@@ -25,442 +23,196 @@ type SEPSelfieRouteParams = {
 
 export default function SEPSelfieScreen() {
   const navigation = useNavigation<StackNavigationProp<any>>();
-  const route = useRoute<RouteProp<{ params: SEPSelfieRouteParams }, 'params'>>();
+  const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const { mode, reactionAvgMs, phraseDurationSec, audioUrl, eventId } = route.params;
-  
+
   const [permission, requestPermission] = useCameraPermissions();
-  const [facing, setFacing] = useState<CameraType>('front');
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(true);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
-  useEffect(() => {
-    // Request camera permission on mount
-    if (!permission?.granted) {
-      requestPermission();
-    }
-  }, []);
-
-  const handleCapture = async () => {
-    if (!cameraRef.current) return;
-
-    try {
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        base64: false,
-      });
-
-      if (photo?.uri) {
-        setCapturedPhoto(photo.uri);
-      }
-    } catch (error) {
-      console.error('Error capturing photo:', error);
-      Alert.alert('Error', 'Failed to capture photo. Please try again.');
-    }
-  };
-
-  const handleRetake = () => {
-    setCapturedPhoto(null);
-  };
-
-  const handleNext = async () => {
-    if (!capturedPhoto) {
-      Alert.alert('Error', 'Please capture a selfie first.');
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Upload selfie to Supabase storage
-      const timestamp = Date.now();
-      const selfiePath = `${user.id}/${timestamp}.jpg`;
-      const selfieUrl = await uploadImage(capturedPhoto, 'sep-selfies', selfiePath);
-
-      if (mode === 'baseline') {
-        // Create SEPBaseline record
-        const { error: baselineError } = await supabase
-          .from('sep_baselines')
-          .insert({
-            user_id: user.id,
-            reaction_avg_ms: reactionAvgMs,
-            phrase_duration_sec: phraseDurationSec,
-            selfie_url: selfieUrl,
-          });
-
-        if (baselineError) {
-          throw baselineError;
-        }
-
-        // Navigate to onboarding complete screen
-        navigation.navigate('OnboardingComplete');
-      } else {
-        // For attempt mode, navigate to SEP result evaluation
-        if (!eventId) {
-          throw new Error('Event ID is required for SEP attempt');
-        }
-        
-        console.log('SEPSelfieScreen navigating to SEPResult with:', {
-          eventId,
-          reactionAvgMs,
-          phraseDurationSec,
-          selfieUrl,
-        });
-        
-        navigation.navigate('SEPResult', {
-          eventId,
-          reactionAvgMs,
-          phraseDurationSec,
-          selfieUrl,
-        });
-      }
-    } catch (error) {
-      console.error('Error saving SEP data:', error);
-      Alert.alert('Error', 'Failed to save selfie. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleStart = () => {
-    setShowInstructions(false);
-  };
-
-  // Handle permission states
-  if (!permission) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
+  if (!permission) return <LoadingScreen />;
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
-        <View style={styles.permissionContainer}>
-          <Text style={styles.permissionTitle}>Camera Access Required</Text>
-          <Text style={styles.permissionText}>
-            Camera access is required for selfie verification.
-          </Text>
-          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-            <Text style={styles.permissionButtonText}>Grant Permission</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+        <EmptyState
+          icon="camera-off-outline"
+          title="Camera access required"
+          subtitle="DSober needs camera access to capture your selfie for verification."
+          action={{ label: 'Grant Access', onPress: requestPermission }}
+        />
+      </SafeAreaView>
     );
   }
 
-  if (showInstructions) {
+  const capture = async () => {
+    const p = await cameraRef.current?.takePictureAsync({ quality: 0.8, base64: false });
+    if (p?.uri) setPhoto(p.uri);
+  };
+
+  const handleNext = async () => {
+    if (!photo) return;
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const selfieUrl = await uploadImage(photo, 'sep-selfies', `${user.id}/${Date.now()}.jpg`);
+
+      if (mode === 'baseline') {
+        await supabase.from('sep_baselines').insert({
+          user_id: user.id,
+          reaction_avg_ms: reactionAvgMs,
+          phrase_duration_sec: phraseDurationSec,
+          selfie_url: selfieUrl,
+        });
+        navigation.navigate('OnboardingComplete');
+      } else {
+        navigation.navigate('SEPResult', { eventId, reactionAvgMs, phraseDurationSec, selfieUrl });
+      }
+    } catch {
+      // user can retry
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (photo) {
     return (
-      <View style={styles.container}>
-        <View style={styles.instructionsContainer}>
-          <Text style={styles.title}>Selfie Capture</Text>
-          <Text style={styles.subtitle}>
-            {mode === 'baseline'
-              ? 'Let\'s capture your baseline selfie'
-              : 'Take a selfie for verification'}
-          </Text>
-
-          <View style={styles.instructionsBox}>
-            <Text style={styles.instructionsTitle}>How it works:</Text>
-            <Text style={styles.instructionsText}>
-              1. Position your face in the camera frame{'\n'}
-              2. Make sure you're in good lighting{'\n'}
-              3. Capture a clear photo of your face{'\n'}
-              4. Review and retake if needed
-            </Text>
-          </View>
-
-          <TouchableOpacity style={styles.startButton} onPress={handleStart}>
-            <Text style={styles.startButtonText}>Start Capture</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  if (capturedPhoto) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.previewContainer}>
-          <Text style={styles.previewTitle}>Review Your Selfie</Text>
-          
-          <Image source={{ uri: capturedPhoto }} style={styles.previewImage} />
-
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.retakeButton}
-              onPress={handleRetake}
-              disabled={isUploading}
-            >
-              <Text style={styles.retakeButtonText}>Retake</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.nextButton}
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+        <View style={styles.previewPage}>
+          <StepProgress current={2} total={3} label="Selfie Capture" />
+          <Text style={styles.previewTitle}>Looks good?</Text>
+          <Image source={{ uri: photo }} style={styles.previewImg} />
+          <View style={styles.previewActions}>
+            <Button variant="secondary" onPress={() => setPhoto(null)} label="Retake" style={styles.halfBtn} />
+            <Button
               onPress={handleNext}
-              disabled={isUploading}
-            >
-              {isUploading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.nextButtonText}>
-                  {mode === 'baseline' ? 'Complete Setup' : 'Continue'}
-                </Text>
-              )}
-            </TouchableOpacity>
+              loading={uploading}
+              label={mode === 'baseline' ? 'Finish Setup' : 'Continue'}
+              style={styles.halfBtn}
+            />
           </View>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing={facing}
-      />
-      <View style={styles.cameraOverlay}>
-        {/* Face guide overlay */}
-        <View style={styles.faceGuide}>
-          <View style={[styles.faceGuideCorner, styles.topLeft]} />
-          <View style={[styles.faceGuideCorner, styles.topRight]} />
-          <View style={[styles.faceGuideCorner, styles.bottomLeft]} />
-          <View style={[styles.faceGuideCorner, styles.bottomRight]} />
-        </View>
+    <View style={styles.cameraContainer}>
+      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="front" />
 
-        <Text style={styles.cameraInstruction}>
-          Position your face in the frame
-        </Text>
+      {/* Overlay */}
+      <View style={styles.overlay}>
+        <SafeAreaView style={styles.fill} edges={['top', 'left', 'right']}>
+          <View style={styles.topBar}>
+            <StepProgress current={2} total={3} label="Selfie Capture" />
+          </View>
 
-        {/* Capture button */}
-        <View style={styles.captureContainer}>
-          <TouchableOpacity
-            style={styles.captureButton}
-            onPress={handleCapture}
-          >
-            <View style={styles.captureButtonInner} />
-          </TouchableOpacity>
-        </View>
+          {/* Face guide */}
+          <View style={styles.guideArea}>
+            <View style={styles.faceGuide}>
+              {(['tl','tr','bl','br'] as const).map((corner) => (
+                <View key={corner} style={[styles.corner, styles[corner]]} />
+              ))}
+            </View>
+            <Text style={styles.guideLabel}>Center your face</Text>
+          </View>
+
+          {/* Capture */}
+          <View style={styles.captureArea}>
+            <TouchableOpacity style={styles.captureBtn} onPress={capture} activeOpacity={0.85}>
+              <View style={styles.captureInner} />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
     </View>
   );
 }
 
+const CORNER_SIZE = 24;
+const CORNER_BORDER = 3;
+
 const styles = StyleSheet.create({
-  container: {
+  safe: { flex: 1, backgroundColor: colors.bg.canvas },
+  fill: { flex: 1 },
+  // Preview page
+  previewPage: {
     flex: 1,
-    backgroundColor: '#000', // Preserved camera UI background
-  },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-    backgroundColor: theme.colors.background.primary,
-  },
-  permissionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  permissionText: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  permissionButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
-    paddingHorizontal: 32,
-  },
-  permissionButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  instructionsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: theme.colors.background.primary,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  instructionsBox: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 32,
-  },
-  instructionsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 12,
-  },
-  instructionsText: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    lineHeight: 24,
-  },
-  startButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  startButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  camera: {
-    flex: 1,
-  },
-  cameraOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-    justifyContent: 'space-between',
-    paddingVertical: 60,
-  },
-  faceGuide: {
-    alignSelf: 'center',
-    width: 250,
-    height: 300,
-    marginTop: 40,
-  },
-  faceGuideCorner: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderColor: '#fff', // Preserved camera UI functional color
-    borderWidth: 3,
-  },
-  topLeft: {
-    top: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-  },
-  topRight: {
-    top: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-  },
-  bottomLeft: {
-    bottom: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
-  },
-  bottomRight: {
-    bottom: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-  },
-  cameraInstruction: {
-    fontSize: 18,
-    color: '#fff', // Preserved camera UI functional color
-    textAlign: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignSelf: 'center',
-    borderRadius: 8,
-  },
-  captureContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  captureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)', // Preserved camera UI functional color
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#fff', // Preserved camera UI functional color
-  },
-  captureButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#fff', // Preserved camera UI functional color
-  },
-  previewContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-    padding: 24,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing['2xl'],
   },
   previewTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    ...typography.title2,
+    color: colors.text.primary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.base,
   },
-  previewImage: {
+  previewImg: {
     flex: 1,
-    borderRadius: 12,
-    marginBottom: 24,
+    borderRadius: radii.lg,
+    backgroundColor: colors.bg.elevated,
+    marginBottom: spacing.xl,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
+  previewActions: { flexDirection: 'row', gap: spacing.md },
+  halfBtn: { flex: 1 },
+  // Camera
+  cameraContainer: { flex: 1, backgroundColor: '#000' },
+  overlay: { ...StyleSheet.absoluteFillObject },
+  topBar: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: spacing.xl,
   },
-  retakeButton: {
+  guideArea: {
     flex: 1,
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 8,
-    padding: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    justifyContent: 'center',
+    gap: spacing.base,
   },
-  retakeButtonText: {
-    color: theme.colors.text.primary,
-    fontSize: 16,
-    fontWeight: '600',
+  faceGuide: {
+    width: 220,
+    height: 280,
+    position: 'relative',
   },
-  nextButton: {
-    flex: 1,
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
+  corner: {
+    position: 'absolute',
+    width: CORNER_SIZE,
+    height: CORNER_SIZE,
+    borderColor: '#FFFFFF',
+    borderWidth: CORNER_BORDER,
+  },
+  tl: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0 },
+  tr: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0 },
+  bl: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0 },
+  br: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
+  guideLabel: {
+    ...typography.callout,
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.full,
+    overflow: 'hidden',
+  },
+  captureArea: {
     alignItems: 'center',
+    paddingBottom: spacing['3xl'],
   },
-  nextButtonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 16,
-    fontWeight: '600',
+  captureBtn: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  captureInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
   },
 });
