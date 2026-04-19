@@ -1,71 +1,65 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-  Alert,
-  Image,
-  Linking,
-  ScrollView,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { RideRequest, User } from '../types/database.types';
-import { theme } from '../theme/colors';
+import { mapRideRequest, mapUser } from '../utils/mappers';
+import { useRealtime } from '../hooks/useRealtime';
+import Avatar from '../components/ui/Avatar';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import LoadingScreen from '../components/ui/LoadingScreen';
+import { colors, spacing, typography, radii } from '../theme';
 
-type EventsStackParamList = {
-  EventDetail: { eventId: string };
-  RideStatus: { eventId: string };
+type RouteParams = { eventId: string };
+type NavigationProp = StackNavigationProp<any>;
+
+interface StatusMeta {
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  title: string;
+  body: string;
+}
+
+const STATUS_META: Record<string, StatusMeta> = {
+  pending: {
+    icon: 'time-outline',
+    color: colors.ui.warning,
+    title: 'Request Pending',
+    body: 'Waiting for your driver to accept. You can cancel anytime before they accept.',
+  },
+  accepted: {
+    icon: 'checkmark-circle-outline',
+    color: colors.ui.success,
+    title: 'Request Accepted',
+    body: 'Your driver is on their way. Please be ready at your pickup location.',
+  },
+  picked_up: {
+    icon: 'car-outline',
+    color: colors.ui.info,
+    title: 'En Route',
+    body: 'Enjoy your ride! Your driver will mark the trip complete when you arrive.',
+  },
 };
 
-type RideStatusRouteProp = RouteProp<EventsStackParamList, 'RideStatus'>;
-type NavigationProp = StackNavigationProp<EventsStackParamList, 'RideStatus'>;
-
 export default function RideStatusScreen() {
-  const route = useRoute<RideStatusRouteProp>();
+  const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const navigation = useNavigation<NavigationProp>();
-  const { eventId } = route.params;
   const { user } = useAuth();
-  const [rideRequest, setRideRequest] = useState<RideRequest | null>(null);
+  const { eventId } = route.params;
+
+  const [request, setRequest] = useState<RideRequest | null>(null);
   const [ddUser, setDDUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
-    fetchRideStatus();
-
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel('ride_status_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'ride_requests',
-          filter: `rider_user_id=eq.${user?.id}`,
-        },
-        () => {
-          fetchRideStatus();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [eventId, user]);
-
-  const fetchRideStatus = async () => {
+  const fetchStatus = async () => {
     if (!user) return;
-
     try {
-      // Fetch active ride request for this user and event
-      const { data: requestData, error: requestError } = await supabase
+      const { data: rd } = await supabase
         .from('ride_requests')
         .select('*')
         .eq('rider_user_id', user.id)
@@ -73,488 +67,160 @@ export default function RideStatusScreen() {
         .in('status', ['pending', 'accepted', 'picked_up'])
         .maybeSingle();
 
-      if (requestError && requestError.code !== 'PGRST116') {
-        throw requestError;
-      }
-
-      if (!requestData) {
-        // No active request, go back if possible
-        Alert.alert(
-          'No Active Request', 
-          'You don\'t have an active ride request.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                if (navigation.canGoBack()) {
-                  navigation.goBack();
-                }
-              }
-            }
-          ]
-        );
+      if (!rd) {
+        if (navigation.canGoBack()) navigation.goBack();
         return;
       }
 
-      const mappedRequest: RideRequest = {
-        id: requestData.id,
-        ddUserId: requestData.dd_user_id,
-        riderUserId: requestData.rider_user_id,
-        eventId: requestData.event_id,
-        pickupLocationText: requestData.pickup_location_text,
-        pickupLatitude: requestData.pickup_latitude,
-        pickupLongitude: requestData.pickup_longitude,
-        status: requestData.status,
-        createdAt: new Date(requestData.created_at),
-        acceptedAt: requestData.accepted_at ? new Date(requestData.accepted_at) : undefined,
-        pickedUpAt: requestData.picked_up_at ? new Date(requestData.picked_up_at) : undefined,
-        completedAt: requestData.completed_at ? new Date(requestData.completed_at) : undefined,
-      };
-      setRideRequest(mappedRequest);
+      const mapped = mapRideRequest(rd);
+      setRequest(mapped);
 
-      // Fetch DD details if request is accepted or picked up
-      if (mappedRequest.status !== 'pending') {
-        const { data: ddData, error: ddError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', mappedRequest.ddUserId)
-          .single();
-
-        if (ddError) throw ddError;
-
-        if (ddData) {
-          const mappedDD: User = {
-            id: ddData.id,
-            email: ddData.email,
-            name: ddData.name,
-            birthday: new Date(ddData.birthday),
-            age: ddData.age,
-            gender: ddData.gender,
-            groupId: ddData.group_id,
-            role: ddData.role,
-            isDD: ddData.is_dd,
-            ddStatus: ddData.dd_status,
-            carMake: ddData.car_make,
-            carModel: ddData.car_model,
-            carPlate: ddData.car_plate,
-            phoneNumber: ddData.phone_number,
-            licensePhotoUrl: ddData.license_photo_url,
-            profilePhotoUrl: ddData.profile_photo_url,
-            createdAt: new Date(ddData.created_at),
-            updatedAt: new Date(ddData.updated_at),
-          };
-          setDDUser(mappedDD);
-        }
+      if (mapped.status !== 'pending') {
+        const { data: dd } = await supabase.from('users').select('*').eq('id', mapped.ddUserId).single();
+        if (dd) setDDUser(mapUser(dd));
       }
-    } catch (err) {
-      console.error('Error fetching ride status:', err);
-      Alert.alert('Error', 'Failed to load ride status. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancelRequest = async () => {
-    if (!rideRequest) return;
+  useEffect(() => { fetchStatus(); }, [eventId]);
 
-    Alert.alert(
-      'Cancel Ride Request',
-      'Are you sure you want to cancel your ride request?',
-      [
-        {
-          text: 'No',
-          style: 'cancel',
+  useRealtime(
+    'ride_requests',
+    () => { fetchStatus(); },
+    { event: 'UPDATE', filter: `rider_user_id=eq.${user?.id}` },
+    [user?.id]
+  );
+
+  const handleCancel = () => {
+    if (!request) return;
+    Alert.alert('Cancel Ride', 'Cancel your ride request?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Cancel',
+        style: 'destructive',
+        onPress: async () => {
+          setCancelling(true);
+          try {
+            await supabase.from('ride_requests').update({ status: 'cancelled' }).eq('id', request.id);
+            if (navigation.canGoBack()) navigation.goBack();
+          } finally {
+            setCancelling(false);
+          }
         },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setCancelling(true);
-
-              const { error } = await supabase
-                .from('ride_requests')
-                .update({
-                  status: 'cancelled',
-                })
-                .eq('id', rideRequest.id);
-
-              if (error) throw error;
-
-              Alert.alert(
-                'Request Cancelled', 
-                'Your ride request has been cancelled.',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => {
-                      // Try to go back, but if there's no screen to go back to,
-                      // the navigation will handle it gracefully
-                      if (navigation.canGoBack()) {
-                        navigation.goBack();
-                      }
-                    }
-                  }
-                ]
-              );
-            } catch (err) {
-              console.error('Error cancelling request:', err);
-              Alert.alert('Error', 'Failed to cancel request. Please try again.');
-            } finally {
-              setCancelling(false);
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
-  const handleCallDriver = async () => {
-    if (!ddUser?.phoneNumber) {
-      Alert.alert(
-        'Phone Number Not Available',
-        'This driver has not provided a phone number.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    const phoneNumber = ddUser.phoneNumber.replace(/[^0-9]/g, '');
-    const phoneUrl = `tel:${phoneNumber}`;
-
-    try {
-      const canOpen = await Linking.canOpenURL(phoneUrl);
-      
-      if (canOpen) {
-        await Linking.openURL(phoneUrl);
-      } else {
-        Alert.alert(
-          'Cannot Make Call',
-          'Your device does not support phone calls.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      console.error('Error opening phone dialer:', error);
-      Alert.alert('Error', 'Failed to open phone dialer. Please try again.');
-    }
+  const handleCallDD = async () => {
+    const phone = ddUser?.phoneNumber;
+    if (!phone) return;
+    const url = `tel:${phone.replace(/\D/g, '')}`;
+    const ok = await Linking.canOpenURL(url);
+    if (ok) Linking.openURL(url);
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary.main} />
-      </View>
-    );
-  }
+  if (loading) return <LoadingScreen message="Loading ride status…" />;
+  if (!request) return null;
 
-  if (!rideRequest) {
-    return null;
-  }
-
-  const getStatusInfo = () => {
-    switch (rideRequest.status) {
-      case 'pending':
-        return {
-          icon: '⏳',
-          title: 'Request Pending',
-          message: 'Your ride request is waiting for the driver to accept.',
-          color: theme.colors.functional.warning,
-        };
-      case 'accepted':
-        return {
-          icon: '✅',
-          title: 'Request Accepted',
-          message: 'Your driver has accepted your request and will pick you up soon.',
-          color: theme.colors.functional.success,
-        };
-      case 'picked_up':
-        return {
-          icon: '🚗',
-          title: 'On the Way',
-          message: 'Your driver has picked you up and is taking you to your destination.',
-          color: theme.colors.primary.main,
-        };
-      default:
-        return {
-          icon: '❓',
-          title: 'Unknown Status',
-          message: 'Unable to determine ride status.',
-          color: theme.colors.text.tertiary,
-        };
-    }
-  };
-
-  const statusInfo = getStatusInfo();
+  const meta = STATUS_META[request.status] ?? STATUS_META.pending;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Status Card */}
-      <View style={[styles.statusCard, { borderLeftColor: statusInfo.color }]}>
-        <Text style={styles.statusIcon}>{statusInfo.icon}</Text>
-        <Text style={styles.statusTitle}>{statusInfo.title}</Text>
-        <Text style={styles.statusMessage}>{statusInfo.message}</Text>
-      </View>
-
-      {/* Pickup Location */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pickup Location</Text>
-        <View style={styles.infoCard}>
-          <Text style={styles.pickupIcon}>📍</Text>
-          <Text style={styles.pickupText}>{rideRequest.pickupLocationText}</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Status hero */}
+      <Card style={[styles.statusCard, { borderLeftColor: meta.color }]} elevated>
+        <View style={styles.statusIconWrap}>
+          <Ionicons name={meta.icon} size={48} color={meta.color} />
         </View>
-      </View>
+        <Text style={[styles.statusTitle, { color: meta.color }]}>{meta.title}</Text>
+        <Text style={styles.statusBody}>{meta.body}</Text>
+      </Card>
 
-      {/* Driver Info (if accepted or picked up) */}
-      {ddUser && rideRequest.status !== 'pending' && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Driver</Text>
-          <View style={styles.driverCard}>
-            {ddUser.profilePhotoUrl ? (
-              <Image
-                source={{ uri: ddUser.profilePhotoUrl }}
-                style={styles.driverPhoto}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.driverPhoto}>
-                <Text style={styles.driverPhotoText}>
-                  {ddUser.name.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
+      {/* Pickup */}
+      <Card elevated style={styles.section}>
+        <Text style={styles.sectionLabel}>PICKUP LOCATION</Text>
+        <View style={styles.locationRow}>
+          <Ionicons name="location-outline" size={16} color={colors.text.tertiary} />
+          <Text style={styles.locationText}>{request.pickupLocationText}</Text>
+        </View>
+      </Card>
+
+      {/* Driver info */}
+      {ddUser && request.status !== 'pending' && (
+        <Card elevated style={styles.section}>
+          <Text style={styles.sectionLabel}>YOUR DRIVER</Text>
+          <View style={styles.driverRow}>
+            <Avatar uri={ddUser.profilePhotoUrl} name={ddUser.name} size={52} />
             <View style={styles.driverInfo}>
               <Text style={styles.driverName}>{ddUser.name}</Text>
-              {ddUser.carMake && ddUser.carModel && (
-                <Text style={styles.carInfo}>
-                  🚗 {ddUser.carMake} {ddUser.carModel}
-                </Text>
-              )}
-              {ddUser.carPlate && (
-                <Text style={styles.carPlate}>Plate: {ddUser.carPlate}</Text>
-              )}
+              {ddUser.carMake && ddUser.carModel ? (
+                <View style={styles.carRow}>
+                  <Ionicons name="car-outline" size={13} color={colors.text.tertiary} />
+                  <Text style={styles.carText}>{ddUser.carMake} {ddUser.carModel}</Text>
+                </View>
+              ) : null}
+              {ddUser.carPlate ? (
+                <Text style={styles.plateText}>{ddUser.carPlate}</Text>
+              ) : null}
             </View>
           </View>
-
-          {/* Call Driver Button */}
-          {ddUser.phoneNumber && (
-            <TouchableOpacity
-              style={styles.callButton}
-              onPress={handleCallDriver}
-            >
-              <Text style={styles.callButtonIcon}>📞</Text>
-              <Text style={styles.callButtonText}>Call Driver</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+          {ddUser.phoneNumber ? (
+            <Button
+              variant="success"
+              leftIcon={<Ionicons name="call-outline" size={16} color="#fff" />}
+              label="Call Driver"
+              onPress={handleCallDD}
+              fullWidth
+              style={styles.callBtn}
+            />
+          ) : null}
+        </Card>
       )}
 
-      {/* Cancel Button (only for pending requests) */}
-      {rideRequest.status === 'pending' && (
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={handleCancelRequest}
-          disabled={cancelling}
-        >
-          {cancelling ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.cancelButtonText}>Cancel Request</Text>
-          )}
-        </TouchableOpacity>
+      {/* Cancel (pending only) */}
+      {request.status === 'pending' && (
+        <Button
+          variant="danger"
+          label="Cancel Request"
+          onPress={handleCancel}
+          loading={cancelling}
+          fullWidth
+          style={styles.cancelBtn}
+        />
       )}
-
-      {/* Info Box */}
-      <View style={styles.infoBox}>
-        <Text style={styles.infoIcon}>ℹ️</Text>
-        <Text style={styles.infoText}>
-          {rideRequest.status === 'pending' && 
-            'The driver will be notified of your request. You can cancel anytime before they accept.'}
-          {rideRequest.status === 'accepted' && 
-            'Your driver is preparing to pick you up. Please be ready at your pickup location.'}
-          {rideRequest.status === 'picked_up' && 
-            'Enjoy your ride! Your driver will mark the ride as complete when you arrive.'}
-        </Text>
-      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
-  },
-  statusCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 24,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  statusTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  statusMessage: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
+  container: { flex: 1, backgroundColor: colors.bg.canvas },
+  content: { padding: spacing.xl, paddingBottom: spacing['3xl'] },
+  statusCard: { alignItems: 'center', marginBottom: spacing.xl, borderLeftWidth: 4 },
+  statusIconWrap: { marginBottom: spacing.md },
+  statusTitle: { ...typography.title2, textAlign: 'center', marginBottom: spacing.sm },
+  statusBody: { ...typography.callout, color: colors.text.secondary, textAlign: 'center', lineHeight: 22 },
+  section: { marginBottom: spacing.xl },
+  sectionLabel: { ...typography.label, color: colors.text.tertiary, marginBottom: spacing.sm },
+  locationRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  locationText: { ...typography.body, color: colors.text.primary, flex: 1 },
+  driverRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.base },
+  driverInfo: { flex: 1 },
+  driverName: { ...typography.bodyBold, color: colors.text.primary, marginBottom: spacing.xs },
+  carRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  carText: { ...typography.caption, color: colors.text.tertiary },
+  plateText: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    backgroundColor: colors.bg.muted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.sm,
     fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 12,
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+    marginTop: spacing.xs,
   },
-  infoCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  pickupIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  pickupText: {
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    flex: 1,
-  },
-  driverCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  driverPhoto: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.primary.main,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  driverPhotoText: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: theme.colors.text.onPrimary,
-  },
-  driverInfo: {
-    flex: 1,
-  },
-  driverName: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 4,
-  },
-  carInfo: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: 2,
-  },
-  carPlate: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-  },
-  callButton: {
-    backgroundColor: theme.colors.functional.success,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  callButtonIcon: {
-    fontSize: 24,
-    marginRight: 8,
-  },
-  callButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.onPrimary,
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.functional.error,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    shadowColor: theme.colors.functional.error,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cancelButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.onPrimary,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-  },
-  infoIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
-  },
+  callBtn: {},
+  cancelBtn: {},
 });

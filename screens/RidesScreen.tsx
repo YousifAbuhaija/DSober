@@ -1,64 +1,52 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-  ScrollView,
-  RefreshControl,
-  Alert,
-} from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { RideRequest, User, DDSession, Event } from '../types/database.types';
-import { calculateDistance } from '../utils/location';
-import { theme } from '../theme/colors';
+import { DDSession, Event, RideRequest, User } from '../types/database.types';
+import { mapDDSession, mapEvent, mapRideRequest, mapUser } from '../utils/mappers';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Avatar from '../components/ui/Avatar';
+import StatusPill from '../components/ui/StatusPill';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingScreen from '../components/ui/LoadingScreen';
+import { colors, spacing, typography, radii } from '../theme';
 
-type RidesStackParamList = {
-  RidesMain: undefined;
-  DDRideQueue: { sessionId: string; eventId: string };
-  RideStatus: { eventId: string };
-  EventDetail: { eventId: string };
-};
+type NavigationProp = StackNavigationProp<any>;
 
-type NavigationProp = StackNavigationProp<RidesStackParamList, 'RidesMain'>;
-
-interface RideRequestWithRider extends RideRequest {
-  riderName: string;
-  distance?: number;
+interface RidesData {
+  activeSession: DDSession | null;
+  activeEvent: Event | null;
+  pendingCount: number;
+  myRequest: RideRequest | null;
+  myDD: User | null;
 }
+
+const RIDE_STATUS_META: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; label: string }> = {
+  pending:   { icon: 'time-outline',          color: colors.ui.warning, label: 'Waiting for driver' },
+  accepted:  { icon: 'checkmark-circle-outline', color: colors.ui.success, label: 'Driver accepted' },
+  picked_up: { icon: 'car-outline',           color: colors.ui.info,    label: 'En route' },
+};
 
 export default function RidesScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
+  const [data, setData] = useState<RidesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeSession, setActiveSession] = useState<DDSession | null>(null);
-  const [activeEvent, setActiveEvent] = useState<Event | null>(null);
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
-  const [myRideRequest, setMyRideRequest] = useState<RideRequest | null>(null);
-  const [myRideDD, setMyRideDD] = useState<User | null>(null);
-  const [migrationError, setMigrationError] = useState(false);
 
-  // Fetch data when screen comes into focus
-  // Note: We don't need to call refreshUser() here because AuthContext
-  // has a real-time subscription that automatically updates user data
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchData();
-    }, [user?.id])
-  );
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
-
     try {
-      // Check if user has an active DD session
+      let activeSession: DDSession | null = null;
+      let activeEvent: Event | null = null;
+      let pendingCount = 0;
+
       if (user.isDD) {
-        const { data: sessionData, error: sessionError } = await supabase
+        const { data: sd } = await supabase
           .from('dd_sessions')
           .select('*')
           .eq('user_id', user.id)
@@ -67,60 +55,22 @@ export default function RidesScreen() {
           .limit(1)
           .maybeSingle();
 
-        if (sessionError && sessionError.code !== 'PGRST116') {
-          console.error('Error fetching session:', sessionError);
-        }
-
-        if (sessionData) {
-          const mappedSession: DDSession = {
-            id: sessionData.id,
-            userId: sessionData.user_id,
-            eventId: sessionData.event_id,
-            startedAt: new Date(sessionData.started_at),
-            endedAt: sessionData.ended_at ? new Date(sessionData.ended_at) : undefined,
-            isActive: sessionData.is_active,
-          };
-          setActiveSession(mappedSession);
-
-          // Fetch event details
-          const { data: eventData } = await supabase
-            .from('events')
-            .select('*')
-            .eq('id', sessionData.event_id)
-            .single();
-
-          if (eventData) {
-            setActiveEvent({
-              id: eventData.id,
-              groupId: eventData.group_id,
-              name: eventData.name,
-              description: eventData.description,
-              dateTime: new Date(eventData.date_time),
-              locationText: eventData.location_text,
-              status: eventData.status,
-              createdByUserId: eventData.created_by_user_id,
-              createdAt: new Date(eventData.created_at),
-            });
-          }
-
-          // Count pending ride requests
+        if (sd) {
+          activeSession = mapDDSession(sd);
+          const { data: ed } = await supabase
+            .from('events').select('*').eq('id', sd.event_id).single();
+          if (ed) activeEvent = mapEvent(ed);
           const { count } = await supabase
             .from('ride_requests')
             .select('*', { count: 'exact', head: true })
             .eq('dd_user_id', user.id)
-            .eq('event_id', sessionData.event_id)
+            .eq('event_id', sd.event_id)
             .eq('status', 'pending');
-
-          setPendingRequestsCount(count || 0);
-        } else {
-          setActiveSession(null);
-          setActiveEvent(null);
-          setPendingRequestsCount(0);
+          pendingCount = count ?? 0;
         }
       }
 
-      // Check if user has an active ride request (as a rider)
-      const { data: requestData, error: requestError } = await supabase
+      const { data: rd } = await supabase
         .from('ride_requests')
         .select('*')
         .eq('rider_user_id', user.id)
@@ -129,607 +79,236 @@ export default function RidesScreen() {
         .limit(1)
         .maybeSingle();
 
-      if (requestError) {
-        if (requestError.code === 'PGRST205') {
-          // Table doesn't exist - migration not run
-          console.error('ride_requests table not found - migration needed');
-          setMigrationError(true);
-          setLoading(false);
-          setRefreshing(false);
-          return;
-        } else if (requestError.code !== 'PGRST116') {
-          console.error('Error fetching ride request:', requestError);
-        }
+      let myRequest: RideRequest | null = rd ? mapRideRequest(rd) : null;
+      let myDD: User | null = null;
+
+      if (rd) {
+        const { data: dd } = await supabase.from('users').select('*').eq('id', rd.dd_user_id).single();
+        if (dd) myDD = mapUser(dd);
       }
 
-      if (requestData) {
-        const mappedRequest: RideRequest = {
-          id: requestData.id,
-          ddUserId: requestData.dd_user_id,
-          riderUserId: requestData.rider_user_id,
-          eventId: requestData.event_id,
-          pickupLocationText: requestData.pickup_location_text,
-          pickupLatitude: requestData.pickup_latitude,
-          pickupLongitude: requestData.pickup_longitude,
-          status: requestData.status,
-          createdAt: new Date(requestData.created_at),
-          acceptedAt: requestData.accepted_at ? new Date(requestData.accepted_at) : undefined,
-          pickedUpAt: requestData.picked_up_at ? new Date(requestData.picked_up_at) : undefined,
-          completedAt: requestData.completed_at ? new Date(requestData.completed_at) : undefined,
-        };
-        setMyRideRequest(mappedRequest);
-
-        // Fetch DD details
-        const { data: ddData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', requestData.dd_user_id)
-          .single();
-
-        if (ddData) {
-          setMyRideDD({
-            id: ddData.id,
-            email: ddData.email,
-            name: ddData.name,
-            birthday: new Date(ddData.birthday),
-            age: ddData.age,
-            gender: ddData.gender,
-            groupId: ddData.group_id,
-            role: ddData.role,
-            isDD: ddData.is_dd,
-            ddStatus: ddData.dd_status,
-            carMake: ddData.car_make,
-            carModel: ddData.car_model,
-            carPlate: ddData.car_plate,
-            phoneNumber: ddData.phone_number,
-            licensePhotoUrl: ddData.license_photo_url,
-            profilePhotoUrl: ddData.profile_photo_url,
-            createdAt: new Date(ddData.created_at),
-            updatedAt: new Date(ddData.updated_at),
-          });
-        }
-      } else {
-        setMyRideRequest(null);
-        setMyRideDD(null);
-      }
-    } catch (err) {
-      console.error('Error fetching rides data:', err);
+      setData({ activeSession, activeEvent, pendingCount, myRequest, myDD });
+    } catch {
+      // silent — user can pull-to-refresh
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+  }, [user?.id]);
+
+  useFocusEffect(useCallback(() => { fetchData(); }, [user?.id]));
+
+  if (loading && !data) return <LoadingScreen message="Loading rides…" />;
+
+  const { activeSession, activeEvent, pendingCount, myRequest, myDD } = data ?? {
+    activeSession: null, activeEvent: null, pendingCount: 0, myRequest: null, myDD: null,
   };
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchData();
-  };
-
-  const renderActiveDDView = () => {
-    if (!activeSession || !activeEvent) return null;
-
-    return (
-      <View style={styles.section}>
-        <View style={styles.activeBadge}>
-          <View style={styles.activeDot} />
-          <Text style={styles.activeBadgeText}>ACTIVE DD SESSION</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{activeEvent.name}</Text>
-          <Text style={styles.cardSubtitle}>📍 {activeEvent.locationText}</Text>
-          
-          {pendingRequestsCount > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationText}>
-                {pendingRequestsCount} pending {pendingRequestsCount === 1 ? 'request' : 'requests'}
-              </Text>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('DDRideQueue', { 
-              sessionId: activeSession.id, 
-              eventId: activeSession.eventId 
-            })}
-          >
-            <Text style={styles.primaryButtonText}>View Ride Queue</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  const renderInactiveDDView = () => {
-    if (!user?.isDD || activeSession) return null;
-
-    return (
-      <View style={styles.section}>
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>🚗</Text>
-          <Text style={styles.emptyTitle}>No Active DD Session</Text>
-          <Text style={styles.emptyText}>
-            Start a DD session from an event to begin receiving ride requests
-          </Text>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => {
-              // Navigate to the Events tab
-              const parent = navigation.getParent();
-              if (parent) {
-                parent.navigate('Events');
-              }
-            }}
-          >
-            <Text style={styles.secondaryButtonText}>Go to Events</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  const renderRevokedDDView = () => {
-    if (!user?.isDD || user.ddStatus !== 'revoked') return null;
-
-    return (
-      <View style={styles.section}>
-        <View style={styles.warningCard}>
-          <Text style={styles.warningIcon}>⚠️</Text>
-          <Text style={styles.warningTitle}>DD Status Revoked</Text>
-          <Text style={styles.warningText}>
-            Your DD status has been revoked. Please contact an admin for more information.
-          </Text>
-        </View>
-      </View>
-    );
-  };
-
-  const renderMyRideRequestView = () => {
-    if (!myRideRequest || !myRideDD) return null;
-
-    const getStatusInfo = () => {
-      switch (myRideRequest.status) {
-        case 'pending':
-          return { icon: '⏳', text: 'Waiting for driver', color: '#FF9500' };
-        case 'accepted':
-          return { icon: '✅', text: 'Driver accepted', color: '#34C759' };
-        case 'picked_up':
-          return { icon: '🚗', text: 'On the way', color: '#007AFF' };
-        default:
-          return { icon: '❓', text: 'Unknown', color: '#8E8E93' };
-      }
-    };
-
-    const statusInfo = getStatusInfo();
-
-    return (
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Ride Request</Text>
-        <View style={[styles.card, { borderLeftWidth: 4, borderLeftColor: statusInfo.color }]}>
-          <View style={styles.statusRow}>
-            <Text style={styles.statusIcon}>{statusInfo.icon}</Text>
-            <Text style={styles.statusText}>{statusInfo.text}</Text>
-          </View>
-          
-          <Text style={styles.driverName}>Driver: {myRideDD.name}</Text>
-          {myRideDD.carMake && myRideDD.carModel && (
-            <Text style={styles.carInfo}>
-              🚗 {myRideDD.carMake} {myRideDD.carModel}
-            </Text>
-          )}
-          <Text style={styles.pickupInfo}>
-            📍 {myRideRequest.pickupLocationText}
-          </Text>
-
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('RideStatus', { eventId: myRideRequest.eventId })}
-          >
-            <Text style={styles.primaryButtonText}>View Details</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  const renderNonDDView = () => {
-    if (user?.isDD) return null;
-
-    return (
-      <View style={styles.section}>
-        <View style={styles.ctaCard}>
-          <Text style={styles.ctaIcon}>🚗</Text>
-          <Text style={styles.ctaTitle}>Become a Designated Driver</Text>
-          <Text style={styles.ctaText}>
-            Help your chapter by becoming a verified DD. You'll be able to give rides during events and help keep everyone safe.
-          </Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => {
-              try {
-                navigation.navigate('DDUpgrade' as any, { 
-                  screen: 'DriverInfo',
-                  params: { mode: 'upgrade' }
-                });
-              } catch (error) {
-                console.error('Navigation error:', error);
-                Alert.alert(
-                  'Navigation Error',
-                  'Unable to open DD upgrade form. Please try again or restart the app.',
-                  [{ text: 'OK' }]
-                );
-              }
-            }}
-          >
-            <Text style={styles.primaryButtonText}>Get Started</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary.main} />
-      </View>
-    );
-  }
-
-  if (migrationError) {
-    return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Rides</Text>
-        </View>
-        <View style={styles.section}>
-          <View style={styles.errorCard}>
-            <Text style={styles.errorIcon}>⚠️</Text>
-            <Text style={styles.errorTitle}>Database Setup Required</Text>
-            <Text style={styles.errorText}>
-              The ride requests feature requires a database migration to be run.
-            </Text>
-            <Text style={styles.errorInstructions}>
-              Please run the SQL migration in your Supabase SQL Editor:
-            </Text>
-            <View style={styles.codeBlock}>
-              <Text style={styles.codeText}>
-                File: supabase/migrations/013_add_ride_requests.sql
-              </Text>
-            </View>
-            <Text style={styles.errorInstructions}>
-              See MIGRATION_INSTRUCTIONS.md for detailed steps.
-            </Text>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => {
-                Alert.alert(
-                  'Migration Instructions',
-                  '1. Go to Supabase Dashboard\n2. Open SQL Editor\n3. Run migration file:\n   013_add_ride_requests.sql\n\nSee MIGRATION_INSTRUCTIONS.md for full details.',
-                  [{ text: 'OK' }]
-                );
-              }}
-            >
-              <Text style={styles.secondaryButtonText}>View Instructions</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-    );
-  }
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => { setRefreshing(true); fetchData(); }}
+          tintColor={colors.brand.primary}
+        />
       }
     >
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Rides</Text>
-        <Text style={styles.headerSubtitle}>
-          {user?.isDD ? 'Manage your ride requests' : 'Request rides from DDs'}
-        </Text>
-      </View>
-
-      {/* Show active ride request first if exists */}
-      {renderMyRideRequestView()}
-
-      {/* Show DD-specific views */}
-      {user?.ddStatus === 'revoked' && renderRevokedDDView()}
-      {user?.isDD && user.ddStatus !== 'revoked' && (
-        <>
-          {renderActiveDDView()}
-          {renderInactiveDDView()}
-        </>
+      {/* Active ride request (member view) */}
+      {myRequest && myDD && (
+        <Section title="Your Ride">
+          <ActiveRideCard request={myRequest} dd={myDD} onPress={() => navigation.navigate('RideStatus', { eventId: myRequest.eventId })} />
+        </Section>
       )}
 
-      {/* Show non-DD call to action */}
-      {!myRideRequest && renderNonDDView()}
+      {/* DD views */}
+      {user?.ddStatus === 'revoked' && (
+        <Section>
+          <Card style={styles.warningCard}>
+            <View style={styles.iconRow}>
+              <Ionicons name="warning-outline" size={32} color={colors.ui.warning} />
+            </View>
+            <Text style={styles.warningTitle}>DD Status Revoked</Text>
+            <Text style={styles.warningBody}>
+              Your DD status has been revoked. Contact an admin for more information.
+            </Text>
+          </Card>
+        </Section>
+      )}
+
+      {user?.isDD && user.ddStatus !== 'revoked' && (
+        activeSession && activeEvent ? (
+          <Section>
+            <View style={styles.activeBadge}>
+              <View style={styles.activeDot} />
+              <Text style={styles.activeBadgeText}>ACTIVE DD SESSION</Text>
+            </View>
+            <Card elevated>
+              <Text style={styles.eventName}>{activeEvent.name}</Text>
+              <View style={styles.metaRow}>
+                <Ionicons name="location-outline" size={14} color={colors.text.tertiary} />
+                <Text style={styles.metaText}>{activeEvent.locationText}</Text>
+              </View>
+              {pendingCount > 0 && (
+                <View style={styles.pendingBadge}>
+                  <Ionicons name="notifications" size={14} color={colors.ui.warning} />
+                  <Text style={styles.pendingText}>
+                    {pendingCount} pending {pendingCount === 1 ? 'request' : 'requests'}
+                  </Text>
+                </View>
+              )}
+              <Button
+                label="View Ride Queue"
+                onPress={() => navigation.navigate('DDRideQueue', { sessionId: activeSession.id, eventId: activeSession.eventId })}
+                fullWidth
+                style={styles.queueBtn}
+              />
+            </Card>
+          </Section>
+        ) : (
+          <Section>
+            <EmptyState
+              icon="car-outline"
+              title="No Active Session"
+              subtitle="Start a DD session from an event to begin receiving ride requests."
+              action={{
+                label: 'Go to Events',
+                onPress: () => navigation.getParent()?.navigate('Events'),
+              }}
+            />
+          </Section>
+        )
+      )}
+
+      {/* Non-DD CTA */}
+      {!user?.isDD && !myRequest && (
+        <Section>
+          <Card style={styles.ctaCard} elevated>
+            <View style={styles.ctaIconWrap}>
+              <Ionicons name="car-outline" size={36} color={colors.brand.primary} />
+            </View>
+            <Text style={styles.ctaTitle}>Become a Designated Driver</Text>
+            <Text style={styles.ctaBody}>
+              Help your chapter stay safe by volunteering as a DD during events.
+            </Text>
+            <Button
+              label="Get Started"
+              onPress={() => navigation.navigate('DDUpgrade', { screen: 'DriverInfo', params: { mode: 'upgrade' } })}
+              fullWidth
+              style={styles.ctaBtn}
+            />
+          </Card>
+        </Section>
+      )}
     </ScrollView>
   );
 }
 
+function Section({ title, children }: { title?: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.section}>
+      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
+      {children}
+    </View>
+  );
+}
+
+function ActiveRideCard({ request, dd, onPress }: { request: RideRequest; dd: User; onPress: () => void }) {
+  const meta = RIDE_STATUS_META[request.status] ?? RIDE_STATUS_META.pending;
+  return (
+    <Card style={[styles.rideCard, { borderLeftColor: meta.color }]} onPress={onPress} elevated>
+      <View style={styles.rideStatusRow}>
+        <Ionicons name={meta.icon} size={18} color={meta.color} />
+        <Text style={[styles.rideStatus, { color: meta.color }]}>{meta.label}</Text>
+        <StatusPill status={request.status as any} />
+      </View>
+      <View style={styles.driverRow}>
+        <Avatar uri={dd.profilePhotoUrl} name={dd.name} size={40} />
+        <View style={styles.driverInfo}>
+          <Text style={styles.driverName}>{dd.name}</Text>
+          {dd.carMake && dd.carModel ? (
+            <Text style={styles.carText}>{dd.carMake} {dd.carModel}</Text>
+          ) : null}
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
+      </View>
+      <View style={styles.pickupRow}>
+        <Ionicons name="location-outline" size={14} color={colors.text.tertiary} />
+        <Text style={styles.pickupText} numberOfLines={1}>{request.pickupLocationText}</Text>
+      </View>
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    paddingBottom: 32,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
-  },
-  header: {
-    backgroundColor: theme.colors.background.elevated,
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-  },
-  section: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 12,
-  },
+  container: { flex: 1, backgroundColor: colors.bg.canvas },
+  content: { paddingBottom: spacing['3xl'] },
+  section: { padding: spacing.xl, paddingBottom: 0 },
+  sectionTitle: { ...typography.bodyBold, color: colors.text.primary, marginBottom: spacing.md },
   activeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.elevated,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    gap: spacing.sm,
     alignSelf: 'flex-start',
-    marginBottom: 16,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.full,
+    backgroundColor: '#0A2010',
     borderWidth: 1,
-    borderColor: theme.colors.functional.success,
+    borderColor: colors.ui.success,
+    marginBottom: spacing.md,
   },
-  activeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.functional.success,
-    marginRight: 8,
-  },
-  activeBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: theme.colors.functional.success,
-    letterSpacing: 1,
-  },
-  card: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: 16,
-  },
-  notificationBadge: {
-    backgroundColor: theme.colors.functional.warning,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  notificationText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.text.onSecondary,
-    textAlign: 'center',
-  },
-  primaryButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.onPrimary,
-  },
-  secondaryButton: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.primary.main,
-  },
-  emptyCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  warningCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.colors.functional.warning,
-  },
-  warningIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  warningTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.functional.warning,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  warningText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  ctaCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.colors.primary.light,
-  },
-  ctaIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  ctaTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  ctaText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  statusRow: {
+  activeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.ui.success },
+  activeBadgeText: { ...typography.label, color: colors.ui.success },
+  eventName: { ...typography.title3, color: colors.text.primary, marginBottom: spacing.xs },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md },
+  metaText: { ...typography.caption, color: colors.text.tertiary },
+  pendingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  statusIcon: {
-    fontSize: 24,
-    marginRight: 8,
-  },
-  statusText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-  },
-  driverName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 4,
-  },
-  carInfo: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: 4,
-  },
-  pickupInfo: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: 16,
-  },
-  errorCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.colors.functional.error,
-  },
-  errorIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.functional.error,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 22,
-  },
-  errorInstructions: {
-    fontSize: 14,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  codeBlock: {
-    backgroundColor: theme.colors.background.input,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    width: '100%',
+    gap: spacing.sm,
+    backgroundColor: '#1A1200',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    borderColor: colors.ui.warning,
+    marginBottom: spacing.md,
   },
-  codeText: {
-    fontSize: 12,
-    fontFamily: 'monospace',
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
+  pendingText: { ...typography.caption, color: colors.ui.warning, fontWeight: '600' },
+  queueBtn: {},
+  warningCard: { alignItems: 'center', gap: spacing.sm, borderWidth: 1.5, borderColor: colors.ui.warning },
+  iconRow: { marginBottom: spacing.xs },
+  warningTitle: { ...typography.bodyBold, color: colors.ui.warning, textAlign: 'center' },
+  warningBody: { ...typography.callout, color: colors.text.secondary, textAlign: 'center', lineHeight: 22 },
+  ctaCard: { alignItems: 'center', borderWidth: 1, borderColor: colors.brand.faint },
+  ctaIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.brand.faint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.base,
   },
+  ctaTitle: { ...typography.title3, color: colors.text.primary, textAlign: 'center', marginBottom: spacing.sm },
+  ctaBody: { ...typography.callout, color: colors.text.secondary, textAlign: 'center', lineHeight: 22, marginBottom: spacing.xl },
+  ctaBtn: {},
+  rideCard: { borderLeftWidth: 3 },
+  rideStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  rideStatus: { ...typography.caption, fontWeight: '600', flex: 1 },
+  driverRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
+  driverInfo: { flex: 1 },
+  driverName: { ...typography.bodyBold, color: colors.text.primary },
+  carText: { ...typography.caption, color: colors.text.tertiary },
+  pickupRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  pickupText: { ...typography.caption, color: colors.text.secondary, flex: 1 },
 });

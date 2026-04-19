@@ -1,20 +1,28 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { DDRequest, Event, User, AdminAlert, SEPAttempt, SEPBaseline } from '../types/database.types';
-import { theme } from '../theme/colors';
+import { mapUser, mapEvent } from '../utils/mappers';
+import Avatar from '../components/ui/Avatar';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import SectionHeader from '../components/ui/SectionHeader';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingScreen from '../components/ui/LoadingScreen';
+import { colors, spacing, typography, radii } from '../theme';
+
+type NavigationProp = StackNavigationProp<any>;
 
 interface DDRequestWithDetails extends DDRequest {
   user: User;
@@ -28,898 +36,377 @@ interface AdminAlertWithDetails extends AdminAlert {
   sepBaseline?: SEPBaseline;
 }
 
-type AdminStackParamList = {
-  AdminDashboard: undefined;
-  AdminRideLog: undefined;
-};
-
-type NavigationProp = StackNavigationProp<AdminStackParamList, 'AdminDashboard'>;
+const fmtDate = (d: Date) =>
+  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 export default function AdminDashboardScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<NavigationProp>();
+
   const [pendingRequests, setPendingRequests] = useState<DDRequestWithDetails[]>([]);
   const [sepAlerts, setSepAlerts] = useState<AdminAlertWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
-  const [processingAlertId, setProcessingAlertId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const fetchPendingRequests = async () => {
-    if (!user?.groupId || user.role !== 'admin') {
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
+  const fetchAll = useCallback(async () => {
+    if (!user?.groupId || user.role !== 'admin') { setLoading(false); return; }
     try {
-      // Fetch pending DD requests for events in the admin's group
-      const { data: requestsData, error: requestsError } = await supabase
+      // Pending DD requests
+      const { data: reqs } = await supabase
         .from('dd_requests')
-        .select(`
-          *,
-          users!dd_requests_user_id_fkey (*),
-          events!dd_requests_event_id_fkey (*)
-        `)
+        .select('*, users!dd_requests_user_id_fkey(*), events!dd_requests_event_id_fkey(*)')
         .eq('status', 'pending')
         .eq('events.group_id', user.groupId)
         .order('created_at', { ascending: false });
 
-      if (requestsError) throw requestsError;
+      setPendingRequests(
+        (reqs || []).map((r) => ({
+          id: r.id, eventId: r.event_id, userId: r.user_id, status: r.status,
+          createdAt: new Date(r.created_at),
+          user: mapUser(r.users),
+          event: mapEvent(r.events),
+        }))
+      );
 
-      // Map snake_case to camelCase
-      const mappedRequests: DDRequestWithDetails[] = (requestsData || []).map((request) => ({
-        id: request.id,
-        eventId: request.event_id,
-        userId: request.user_id,
-        status: request.status,
-        createdAt: new Date(request.created_at),
-        user: {
-          id: request.users.id,
-          email: request.users.email,
-          name: request.users.name,
-          birthday: new Date(request.users.birthday),
-          age: request.users.age,
-          gender: request.users.gender,
-          groupId: request.users.group_id,
-          role: request.users.role,
-          isDD: request.users.is_dd,
-          ddStatus: request.users.dd_status,
-          carMake: request.users.car_make,
-          carModel: request.users.car_model,
-          carPlate: request.users.car_plate,
-          licensePhotoUrl: request.users.license_photo_url,
-          createdAt: new Date(request.users.created_at),
-          updatedAt: new Date(request.users.updated_at),
-        },
-        event: {
-          id: request.events.id,
-          groupId: request.events.group_id,
-          name: request.events.name,
-          description: request.events.description,
-          dateTime: new Date(request.events.date_time),
-          locationText: request.events.location_text,
-          status: request.events.status,
-          createdByUserId: request.events.created_by_user_id,
-          createdAt: new Date(request.events.created_at),
-        },
-      }));
-
-      setPendingRequests(mappedRequests);
-    } catch (error) {
-      console.error('Error fetching pending requests:', error);
-      Alert.alert('Error', 'Failed to load pending requests');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const fetchSEPAlerts = async () => {
-    if (!user?.groupId || user.role !== 'admin') {
-      return;
-    }
-
-    try {
-      // Fetch unresolved SEP fail alerts for events in the admin's group
-      const { data: alertsData, error: alertsError } = await supabase
+      // SEP alerts
+      const { data: alerts } = await supabase
         .from('admin_alerts')
-        .select(`
-          *,
-          users!admin_alerts_user_id_fkey (*),
-          events!admin_alerts_event_id_fkey (*),
-          sep_attempts!admin_alerts_sep_attempt_id_fkey (*)
-        `)
+        .select('*, users!admin_alerts_user_id_fkey(*), events!admin_alerts_event_id_fkey(*), sep_attempts!admin_alerts_sep_attempt_id_fkey(*)')
         .eq('type', 'SEP_FAIL')
         .is('resolved_at', null)
         .eq('events.group_id', user.groupId)
         .order('created_at', { ascending: false });
 
-      if (alertsError) throw alertsError;
-
-      // For each alert, fetch the user's SEP baseline
-      const alertsWithBaseline = await Promise.all(
-        (alertsData || []).map(async (alert) => {
-          const { data: baselineData } = await supabase
-            .from('sep_baselines')
-            .select('*')
-            .eq('user_id', alert.user_id)
-            .single();
-
+      const alertsWithBaseline: AdminAlertWithDetails[] = await Promise.all(
+        (alerts || []).map(async (a) => {
+          const { data: baseline } = await supabase
+            .from('sep_baselines').select('*').eq('user_id', a.user_id).single();
           return {
-            id: alert.id,
-            type: alert.type,
-            userId: alert.user_id,
-            eventId: alert.event_id,
-            sepAttemptId: alert.sep_attempt_id,
-            createdAt: new Date(alert.created_at),
-            resolvedByAdminId: alert.resolved_by_admin_id,
-            resolvedAt: alert.resolved_at ? new Date(alert.resolved_at) : undefined,
-            user: {
-              id: alert.users.id,
-              email: alert.users.email,
-              name: alert.users.name,
-              birthday: new Date(alert.users.birthday),
-              age: alert.users.age,
-              gender: alert.users.gender,
-              groupId: alert.users.group_id,
-              role: alert.users.role,
-              isDD: alert.users.is_dd,
-              ddStatus: alert.users.dd_status,
-              carMake: alert.users.car_make,
-              carModel: alert.users.car_model,
-              carPlate: alert.users.car_plate,
-              licensePhotoUrl: alert.users.license_photo_url,
-              createdAt: new Date(alert.users.created_at),
-              updatedAt: new Date(alert.users.updated_at),
-            },
-            event: {
-              id: alert.events.id,
-              groupId: alert.events.group_id,
-              name: alert.events.name,
-              description: alert.events.description,
-              dateTime: new Date(alert.events.date_time),
-              locationText: alert.events.location_text,
-              status: alert.events.status,
-              createdByUserId: alert.events.created_by_user_id,
-              createdAt: new Date(alert.events.created_at),
-            },
+            id: a.id, type: a.type, userId: a.user_id, eventId: a.event_id,
+            sepAttemptId: a.sep_attempt_id, createdAt: new Date(a.created_at),
+            resolvedByAdminId: a.resolved_by_admin_id,
+            resolvedAt: a.resolved_at ? new Date(a.resolved_at) : undefined,
+            user: mapUser(a.users),
+            event: mapEvent(a.events),
             sepAttempt: {
-              id: alert.sep_attempts.id,
-              userId: alert.sep_attempts.user_id,
-              eventId: alert.sep_attempts.event_id,
-              reactionAvgMs: alert.sep_attempts.reaction_avg_ms,
-              phraseDurationSec: alert.sep_attempts.phrase_duration_sec,
-              selfieUrl: alert.sep_attempts.selfie_url,
-              result: alert.sep_attempts.result,
-              createdAt: new Date(alert.sep_attempts.created_at),
+              id: a.sep_attempts.id, userId: a.sep_attempts.user_id,
+              eventId: a.sep_attempts.event_id,
+              reactionAvgMs: a.sep_attempts.reaction_avg_ms,
+              phraseDurationSec: a.sep_attempts.phrase_duration_sec,
+              selfieUrl: a.sep_attempts.selfie_url,
+              result: a.sep_attempts.result,
+              createdAt: new Date(a.sep_attempts.created_at),
             },
-            sepBaseline: baselineData ? {
-              id: baselineData.id,
-              userId: baselineData.user_id,
-              reactionAvgMs: baselineData.reaction_avg_ms,
-              phraseDurationSec: baselineData.phrase_duration_sec,
-              selfieUrl: baselineData.selfie_url,
-              createdAt: new Date(baselineData.created_at),
+            sepBaseline: baseline ? {
+              id: baseline.id, userId: baseline.user_id,
+              reactionAvgMs: baseline.reaction_avg_ms,
+              phraseDurationSec: baseline.phrase_duration_sec,
+              selfieUrl: baseline.selfie_url,
+              createdAt: new Date(baseline.created_at),
             } : undefined,
           };
         })
       );
-
       setSepAlerts(alertsWithBaseline);
-    } catch (error) {
-      console.error('Error fetching SEP alerts:', error);
-      Alert.alert('Error', 'Failed to load SEP alerts');
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchPendingRequests();
-    fetchSEPAlerts();
   }, [user?.groupId]);
 
-  // Refresh when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchPendingRequests();
-      fetchSEPAlerts();
-    }, [user?.groupId])
-  );
+  useFocusEffect(useCallback(() => { fetchAll(); }, [user?.groupId]));
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchPendingRequests();
-    fetchSEPAlerts();
-  };
-
-  const approveRequest = async (request: DDRequestWithDetails) => {
-    setProcessingRequestId(request.id);
-
+  const approveRequest = async (req: DDRequestWithDetails) => {
+    setProcessingId(req.id);
     try {
-      // Check if user's DD status is revoked
-      if (request.user.ddStatus === 'revoked') {
-        Alert.alert(
-          'Cannot Approve',
-          `${request.user.name} has a revoked DD status and cannot be approved. Please reinstate them first if appropriate.`
-        );
-        
-        // Auto-reject the request
-        await supabase
-          .from('dd_requests')
-          .update({ status: 'rejected' })
-          .eq('id', request.id);
-        
-        // Remove from local state
-        setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
+      if (req.user.ddStatus === 'revoked') {
+        await supabase.from('dd_requests').update({ status: 'rejected' }).eq('id', req.id);
+        setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
+        Alert.alert('Cannot Approve', `${req.user.name} has a revoked DD status.`);
         return;
       }
-
-      // Start a transaction-like operation
-      // 1. Create or update DDAssignment with status 'assigned'
-      const { error: assignmentError } = await supabase
-        .from('dd_assignments')
-        .upsert({
-          event_id: request.eventId,
-          user_id: request.userId,
-          status: 'assigned',
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'event_id,user_id',
-        });
-
-      if (assignmentError) throw assignmentError;
-
-      // 2. Update DDRequest status to 'approved'
-      const { error: requestError } = await supabase
-        .from('dd_requests')
-        .update({ status: 'approved' })
-        .eq('id', request.id);
-
-      if (requestError) throw requestError;
-
-      // Remove from local state
-      setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
-    } catch (error) {
-      console.error('Error approving request:', error);
-      Alert.alert('Error', 'Failed to approve request. Please try again.');
+      await supabase.from('dd_assignments').upsert(
+        { event_id: req.eventId, user_id: req.userId, status: 'assigned', updated_at: new Date().toISOString() },
+        { onConflict: 'event_id,user_id' }
+      );
+      await supabase.from('dd_requests').update({ status: 'approved' }).eq('id', req.id);
+      setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
     } finally {
-      setProcessingRequestId(null);
+      setProcessingId(null);
     }
   };
 
-  const rejectRequest = async (request: DDRequestWithDetails) => {
-    setProcessingRequestId(request.id);
-
+  const rejectRequest = async (req: DDRequestWithDetails) => {
+    setProcessingId(req.id);
     try {
-      // Update DDRequest status to 'rejected'
-      const { error } = await supabase
-        .from('dd_requests')
-        .update({ status: 'rejected' })
-        .eq('id', request.id);
-
-      if (error) throw error;
-
-      // Remove from local state
-      setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
-    } catch (error) {
-      console.error('Error rejecting request:', error);
-      Alert.alert('Error', 'Failed to reject request. Please try again.');
+      await supabase.from('dd_requests').update({ status: 'rejected' }).eq('id', req.id);
+      setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
     } finally {
-      setProcessingRequestId(null);
+      setProcessingId(null);
     }
-  };
-
-  const handleApprove = (request: DDRequestWithDetails) => {
-    Alert.alert(
-      'Approve DD Request',
-      `Approve ${request.user.name} as DD for ${request.event.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Approve', onPress: () => approveRequest(request) },
-      ]
-    );
-  };
-
-  const handleReject = (request: DDRequestWithDetails) => {
-    Alert.alert(
-      'Reject DD Request',
-      `Reject ${request.user.name}'s request for ${request.event.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reject', style: 'destructive', onPress: () => rejectRequest(request) },
-      ]
-    );
   };
 
   const reinstateDD = async (alert: AdminAlertWithDetails) => {
     if (!user?.id) return;
-    
-    setProcessingAlertId(alert.id);
-
+    setProcessingId(alert.id);
     try {
-      // 1. Update user's dd_status back to 'active'
-      const { error: userUpdateError } = await supabase
-        .from('users')
-        .update({ dd_status: 'active' })
-        .eq('id', alert.userId);
-
-      if (userUpdateError) throw userUpdateError;
-
-      // 2. Delete ALL DD assignments for this user (they must request again)
-      const { error: assignmentError } = await supabase
-        .from('dd_assignments')
-        .delete()
-        .eq('user_id', alert.userId);
-
-      if (assignmentError) throw assignmentError;
-
-      // 3. Resolve ALL unresolved alerts for this user
-      const { error: alertError } = await supabase
-        .from('admin_alerts')
-        .update({
-          resolved_at: new Date().toISOString(),
-          resolved_by_admin_id: user.id,
-        })
-        .eq('user_id', alert.userId)
-        .is('resolved_at', null);
-
-      if (alertError) throw alertError;
-
-      // Remove all alerts for this user from local state
+      await supabase.from('users').update({ dd_status: 'active' }).eq('id', alert.userId);
+      await supabase.from('dd_assignments').delete().eq('user_id', alert.userId);
+      await supabase.from('admin_alerts')
+        .update({ resolved_at: new Date().toISOString(), resolved_by_admin_id: user.id })
+        .eq('user_id', alert.userId).is('resolved_at', null);
       setSepAlerts((prev) => prev.filter((a) => a.userId !== alert.userId));
-
-      Alert.alert(
-        'DD Reinstated', 
-        `${alert.user.name} has been reinstated as DD. They will need to request to be DD for events again.`
-      );
-    } catch (error) {
-      console.error('Error reinstating DD:', error);
-      Alert.alert('Error', 'Failed to reinstate DD. Please try again.');
     } finally {
-      setProcessingAlertId(null);
+      setProcessingId(null);
     }
   };
 
   const keepRevoked = async (alert: AdminAlertWithDetails) => {
     if (!user?.id) return;
-    
-    setProcessingAlertId(alert.id);
-
+    setProcessingId(alert.id);
     try {
-      // Resolve ALL unresolved alerts for this user and event, keep DDAssignment status as 'revoked'
-      const { error } = await supabase
-        .from('admin_alerts')
-        .update({
-          resolved_at: new Date().toISOString(),
-          resolved_by_admin_id: user.id,
-        })
-        .eq('user_id', alert.userId)
-        .eq('event_id', alert.eventId)
-        .is('resolved_at', null);
-
-      if (error) throw error;
-
-      // Remove all alerts for this user/event from local state
-      setSepAlerts((prev) => prev.filter((a) => 
-        !(a.userId === alert.userId && a.eventId === alert.eventId)
-      ));
-
-      Alert.alert('Alert Resolved', `${alert.user.name} will remain revoked for ${alert.event.name}`);
-    } catch (error) {
-      console.error('Error resolving alert:', error);
-      Alert.alert('Error', 'Failed to resolve alert. Please try again.');
+      await supabase.from('admin_alerts')
+        .update({ resolved_at: new Date().toISOString(), resolved_by_admin_id: user.id })
+        .eq('user_id', alert.userId).eq('event_id', alert.eventId).is('resolved_at', null);
+      setSepAlerts((prev) => prev.filter((a) => !(a.userId === alert.userId && a.eventId === alert.eventId)));
     } finally {
-      setProcessingAlertId(null);
+      setProcessingId(null);
     }
   };
 
-  const handleReinstate = (alert: AdminAlertWithDetails) => {
-    Alert.alert(
-      'Reinstate DD',
-      `Reinstate ${alert.user.name} as DD for ${alert.event.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reinstate', onPress: () => reinstateDD(alert) },
-      ]
-    );
-  };
-
-  const handleKeepRevoked = (alert: AdminAlertWithDetails) => {
-    Alert.alert(
-      'Keep Revoked',
-      `Keep ${alert.user.name} revoked for ${alert.event.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Keep Revoked', style: 'destructive', onPress: () => keepRevoked(alert) },
-      ]
-    );
-  };
-
-  const formatDateTime = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
-
-  const renderRequestCard = (request: DDRequestWithDetails) => {
-    const isProcessing = processingRequestId === request.id;
-
-    return (
-      <View key={request.id} style={styles.requestCard}>
-        <View style={styles.requestHeader}>
-          <Text style={styles.userName}>{request.user.name}</Text>
-          <Text style={styles.requestTime}>{formatDateTime(request.createdAt)}</Text>
-        </View>
-        
-        <Text style={styles.eventName}>📅 {request.event.name}</Text>
-        <Text style={styles.eventDateTime}>{formatDateTime(request.event.dateTime)}</Text>
-        
-        {request.user.carMake && (
-          <Text style={styles.carInfo}>
-            🚗 {request.user.carMake} {request.user.carModel} • {request.user.carPlate}
-          </Text>
-        )}
-
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.button, styles.rejectButton, isProcessing && styles.buttonDisabled]}
-            onPress={() => handleReject(request)}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Reject</Text>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.button, styles.approveButton, isProcessing && styles.buttonDisabled]}
-            onPress={() => handleApprove(request)}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Approve</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyCard}>
-      <Text style={styles.emptyIcon}>📋</Text>
-      <Text style={styles.emptyText}>No pending DD requests</Text>
-      <Text style={styles.emptySubtext}>Requests will appear here when members apply to be DDs</Text>
-    </View>
-  );
-
-  const renderAlertCard = (alert: AdminAlertWithDetails) => {
-    const isProcessing = processingAlertId === alert.id;
-    const baseline = alert.sepBaseline;
-    const attempt = alert.sepAttempt;
-
-    return (
-      <View key={alert.id} style={styles.alertCard}>
-        <View style={styles.alertHeader}>
-          <Text style={styles.alertTitle}>⚠️ SEP Verification Failed</Text>
-          <Text style={styles.alertTime}>{formatDateTime(alert.createdAt)}</Text>
-        </View>
-
-        <View style={styles.alertInfo}>
-          <Text style={styles.userName}>{alert.user.name}</Text>
-          <Text style={styles.eventName}>📅 {alert.event.name}</Text>
-          <Text style={styles.eventDateTime}>{formatDateTime(alert.event.dateTime)}</Text>
-        </View>
-
-        {baseline && (
-          <View style={styles.metricsContainer}>
-            <Text style={styles.metricsTitle}>Performance Comparison:</Text>
-            
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Reaction Time:</Text>
-              <View style={styles.metricValues}>
-                <Text style={styles.baselineValue}>
-                  Baseline: {baseline.reactionAvgMs}ms
-                </Text>
-                <Text style={[
-                  styles.attemptValue,
-                  attempt.reactionAvgMs > baseline.reactionAvgMs + 150 && styles.failedValue
-                ]}>
-                  Attempt: {attempt.reactionAvgMs}ms
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Phrase Duration:</Text>
-              <View style={styles.metricValues}>
-                <Text style={styles.baselineValue}>
-                  Baseline: {baseline.phraseDurationSec.toFixed(1)}s
-                </Text>
-                <Text style={[
-                  styles.attemptValue,
-                  attempt.phraseDurationSec > baseline.phraseDurationSec + 2 && styles.failedValue
-                ]}>
-                  Attempt: {attempt.phraseDurationSec.toFixed(1)}s
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.button, styles.revokeButton, isProcessing && styles.buttonDisabled]}
-            onPress={() => handleKeepRevoked(alert)}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Keep Revoked</Text>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.button, styles.reinstateButton, isProcessing && styles.buttonDisabled]}
-            onPress={() => handleReinstate(alert)}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Reinstate DD</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  const renderAlertsEmptyState = () => (
-    <View style={styles.emptyCard}>
-      <Text style={styles.emptyIcon}>✅</Text>
-      <Text style={styles.emptyText}>No SEP alerts</Text>
-      <Text style={styles.emptySubtext}>Alerts will appear here when DDs fail verification</Text>
-    </View>
-  );
-
   if (user?.role !== 'admin') {
     return (
-      <View style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Admin Access Required</Text>
-          <Text style={styles.emptySubtext}>This section is only available to admins</Text>
-        </View>
-      </View>
+      <EmptyState icon="shield-outline" title="Admin Access Required" subtitle="This section is only available to admins." />
     );
   }
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary.main} />
-      </View>
-    );
-  }
+  if (loading && !pendingRequests.length && !sepAlerts.length) return <LoadingScreen message="Loading dashboard…" />;
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Quick Actions Section */}
-        <View style={styles.quickActionsSection}>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={() => navigation.navigate('AdminRideLog')}
-          >
-            <Text style={styles.quickActionIcon}>📊</Text>
-            <Text style={styles.quickActionText}>View Ride Activity Log</Text>
-          </TouchableOpacity>
-        </View>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => { setRefreshing(true); fetchAll(); }}
+          tintColor={colors.brand.primary}
+        />
+      }
+    >
+      {/* Quick action */}
+      <Button
+        label="View Ride Activity Log"
+        leftIcon={<Ionicons name="bar-chart-outline" size={18} color="#fff" />}
+        onPress={() => navigation.navigate('AdminRideLog')}
+        fullWidth
+        style={styles.logBtn}
+      />
 
-        {/* Pending DD Requests Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderTitle}>Pending DD Requests</Text>
-          {pendingRequests.length > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{pendingRequests.length}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.sectionContent}>
-          {pendingRequests.length === 0 ? (
-            renderEmptyState()
-          ) : (
-            pendingRequests.map(renderRequestCard)
-          )}
-        </View>
+      {/* DD Requests */}
+      <View style={styles.section}>
+        <SectionHeader
+          title="Pending DD Requests"
+          rightLabel={pendingRequests.length > 0 ? String(pendingRequests.length) : undefined}
+        />
+        {pendingRequests.length === 0 ? (
+          <EmptyState icon="checkmark-circle-outline" title="No pending requests" subtitle="DD requests will appear here." />
+        ) : (
+          pendingRequests.map((req) => (
+            <DDRequestCard
+              key={req.id}
+              req={req}
+              processing={processingId === req.id}
+              onApprove={() => Alert.alert('Approve', `Approve ${req.user.name} for ${req.event.name}?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Approve', onPress: () => approveRequest(req) },
+              ])}
+              onReject={() => Alert.alert('Reject', `Reject ${req.user.name}'s request?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Reject', style: 'destructive', onPress: () => rejectRequest(req) },
+              ])}
+            />
+          ))
+        )}
+      </View>
 
-        {/* SEP Alerts Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderTitle}>SEP Alerts</Text>
-          {sepAlerts.length > 0 && (
-            <View style={[styles.badge, styles.badgeWarning]}>
-              <Text style={styles.badgeText}>{sepAlerts.length}</Text>
-            </View>
-          )}
+      {/* SEP Alerts */}
+      <View style={styles.section}>
+        <SectionHeader
+          title="SEP Alerts"
+          rightLabel={sepAlerts.length > 0 ? String(sepAlerts.length) : undefined}
+        />
+        {sepAlerts.length === 0 ? (
+          <EmptyState icon="shield-checkmark-outline" title="No alerts" subtitle="Failed SEP verifications will appear here." />
+        ) : (
+          sepAlerts.map((alert) => (
+            <SEPAlertCard
+              key={alert.id}
+              alert={alert}
+              processing={processingId === alert.id}
+              onReinstate={() => Alert.alert('Reinstate', `Reinstate ${alert.user.name} as DD?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Reinstate', onPress: () => reinstateDD(alert) },
+              ])}
+              onKeepRevoked={() => Alert.alert('Keep Revoked', `Keep ${alert.user.name} revoked?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Confirm', style: 'destructive', onPress: () => keepRevoked(alert) },
+              ])}
+            />
+          ))
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+function DDRequestCard({
+  req, processing, onApprove, onReject,
+}: {
+  req: DDRequestWithDetails;
+  processing: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  return (
+    <Card elevated style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Avatar name={req.user.name} size={40} />
+        <View style={styles.cardHeaderInfo}>
+          <Text style={styles.userName}>{req.user.name}</Text>
+          <Text style={styles.metaText}>{fmtDate(req.createdAt)}</Text>
         </View>
-        <View style={styles.sectionContent}>
-          {sepAlerts.length === 0 ? (
-            renderAlertsEmptyState()
-          ) : (
-            sepAlerts.map(renderAlertCard)
-          )}
+      </View>
+      <View style={styles.eventRow}>
+        <Ionicons name="calendar-outline" size={13} color={colors.text.tertiary} />
+        <Text style={styles.eventName} numberOfLines={1}>{req.event.name}</Text>
+      </View>
+      {req.user.carMake && req.user.carModel ? (
+        <View style={styles.carRow}>
+          <Ionicons name="car-outline" size={13} color={colors.text.tertiary} />
+          <Text style={styles.carText}>{req.user.carMake} {req.user.carModel}{req.user.carPlate ? ` • ${req.user.carPlate}` : ''}</Text>
         </View>
-      </ScrollView>
+      ) : null}
+      <View style={styles.actions}>
+        <Button variant="danger" label="Reject" onPress={onReject} loading={processing} disabled={processing} style={styles.halfBtn} />
+        <Button variant="success" label="Approve" onPress={onApprove} loading={processing} disabled={processing} style={styles.halfBtn} />
+      </View>
+    </Card>
+  );
+}
+
+function SEPAlertCard({
+  alert, processing, onReinstate, onKeepRevoked,
+}: {
+  alert: AdminAlertWithDetails;
+  processing: boolean;
+  onReinstate: () => void;
+  onKeepRevoked: () => void;
+}) {
+  const baseline = alert.sepBaseline;
+  const attempt = alert.sepAttempt;
+  const rxFail = baseline && attempt.reactionAvgMs > baseline.reactionAvgMs + 150;
+  const phFail = baseline && attempt.phraseDurationSec > baseline.phraseDurationSec + 2;
+
+  return (
+    <Card style={styles.alertCard} elevated>
+      <View style={styles.alertHeader}>
+        <Ionicons name="warning-outline" size={16} color={colors.ui.warning} />
+        <Text style={styles.alertTitle}>SEP Verification Failed</Text>
+        <Text style={styles.metaText}>{fmtDate(alert.createdAt)}</Text>
+      </View>
+
+      <View style={styles.cardHeader}>
+        <Avatar name={alert.user.name} size={40} />
+        <View style={styles.cardHeaderInfo}>
+          <Text style={styles.userName}>{alert.user.name}</Text>
+          <View style={styles.eventRow}>
+            <Ionicons name="calendar-outline" size={12} color={colors.text.tertiary} />
+            <Text style={styles.eventName} numberOfLines={1}>{alert.event.name}</Text>
+          </View>
+        </View>
+      </View>
+
+      {baseline && (
+        <View style={styles.metricsBlock}>
+          <MetricRow
+            label="Reaction Time"
+            baseline={`${baseline.reactionAvgMs}ms`}
+            attempt={`${attempt.reactionAvgMs}ms`}
+            failed={rxFail}
+          />
+          <MetricRow
+            label="Phrase Duration"
+            baseline={`${baseline.phraseDurationSec.toFixed(1)}s`}
+            attempt={`${attempt.phraseDurationSec.toFixed(1)}s`}
+            failed={phFail}
+          />
+        </View>
+      )}
+
+      <View style={styles.actions}>
+        <Button variant="secondary" label="Keep Revoked" onPress={onKeepRevoked} loading={processing} disabled={processing} style={styles.halfBtn} />
+        <Button label="Reinstate DD" onPress={onReinstate} loading={processing} disabled={processing} style={styles.halfBtn} />
+      </View>
+    </Card>
+  );
+}
+
+function MetricRow({ label, baseline, attempt, failed }: {
+  label: string; baseline: string; attempt: string; failed?: boolean;
+}) {
+  return (
+    <View style={styles.metricRow}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <View style={styles.metricValues}>
+        <Text style={styles.metricBase}>{baseline}</Text>
+        <Ionicons name="arrow-forward" size={11} color={colors.border.default} />
+        <Text style={[styles.metricAttempt, failed && styles.metricFail]}>{attempt}</Text>
+        {failed ? <Ionicons name="close-circle" size={13} color={colors.ui.error} /> : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
-  },
-  scrollContent: {
-    paddingBottom: 16,
-  },
-  quickActionsSection: {
-    padding: 16,
-    backgroundColor: theme.colors.background.primary,
-  },
-  quickActionButton: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  quickActionIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  quickActionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.onPrimary,
-  },
-  sectionHeader: {
-    backgroundColor: theme.colors.background.elevated,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionHeaderTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-  },
-  badge: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    minWidth: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeWarning: {
-    backgroundColor: theme.colors.functional.warning,
-  },
-  badgeText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.colors.text.onPrimary,
-  },
-  sectionContent: {
-    padding: 16,
-  },
-  requestCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-  },
-  requestTime: {
-    fontSize: 12,
-    color: theme.colors.text.tertiary,
-  },
-  eventName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: theme.colors.text.primary,
-    marginBottom: 4,
-  },
-  eventDateTime: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: 8,
-  },
-  carInfo: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: 12,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  approveButton: {
-    backgroundColor: theme.colors.functional.success,
-  },
-  rejectButton: {
-    backgroundColor: theme.colors.functional.error,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.onPrimary,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.secondary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  alertCard: {
-    backgroundColor: theme.colors.background.elevated,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.functional.warning,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+  container: { flex: 1, backgroundColor: colors.bg.canvas },
+  content: { padding: spacing.xl, paddingBottom: spacing['3xl'] },
+  logBtn: { marginBottom: spacing.xl },
+  section: { marginBottom: spacing.xl },
+  card: { marginBottom: spacing.md },
+  alertCard: { marginBottom: spacing.md, borderLeftWidth: 3, borderLeftColor: colors.ui.warning },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
+  cardHeaderInfo: { flex: 1 },
+  userName: { ...typography.bodyBold, color: colors.text.primary },
+  metaText: { ...typography.caption, color: colors.text.tertiary },
+  eventRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs },
+  eventName: { ...typography.caption, color: colors.text.secondary, flex: 1 },
+  carRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md },
+  carText: { ...typography.caption, color: colors.text.tertiary },
+  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  halfBtn: { flex: 1 },
   alertHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: spacing.xs,
+    marginBottom: spacing.md,
   },
-  alertTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.functional.warning,
+  alertTitle: { ...typography.caption, color: colors.ui.warning, fontWeight: '600', flex: 1 },
+  metricsBlock: {
+    backgroundColor: colors.bg.muted,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
-  alertTime: {
-    fontSize: 12,
-    color: theme.colors.text.tertiary,
-  },
-  alertInfo: {
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
-  },
-  metricsContainer: {
-    backgroundColor: theme.colors.background.input,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  metricsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-  },
-  metricRow: {
-    marginBottom: 8,
-  },
-  metricLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: theme.colors.text.secondary,
-    marginBottom: 4,
-  },
-  metricValues: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingLeft: 8,
-  },
-  baselineValue: {
-    fontSize: 13,
-    color: theme.colors.functional.success,
-  },
-  attemptValue: {
-    fontSize: 13,
-    color: theme.colors.text.secondary,
-  },
-  failedValue: {
-    color: theme.colors.functional.error,
-    fontWeight: '600',
-  },
-  reinstateButton: {
-    backgroundColor: theme.colors.primary.main,
-  },
-  revokeButton: {
-    backgroundColor: theme.colors.state.inactive,
-  },
+  metricRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  metricLabel: { ...typography.caption, color: colors.text.secondary },
+  metricValues: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  metricBase: { ...typography.caption, color: colors.ui.success },
+  metricAttempt: { ...typography.caption, color: colors.text.secondary, fontWeight: '600' },
+  metricFail: { color: colors.ui.error },
 });
