@@ -19,6 +19,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
   const { signIn, signUp } = useAuth();
 
   const handleLogin = async () => {
@@ -50,7 +51,10 @@ export default function AuthScreen() {
 
     setLoading(true);
     try {
-      await signUp(email, password);
+      const { needsEmailConfirmation } = await signUp(email, password);
+      if (needsEmailConfirmation) {
+        setConfirmationSent(true);
+      }
     } catch (error: any) {
       handleError(error, 'Signup');
     } finally {
@@ -62,6 +66,7 @@ export default function AuthScreen() {
     setIsLogin(!isLogin);
     setEmail('');
     setPassword('');
+    setConfirmationSent(false);
   };
 
   return (
@@ -75,54 +80,70 @@ export default function AuthScreen() {
           {isLogin ? 'Welcome back' : 'Create your account'}
         </Text>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!loading}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            editable={!loading}
-          />
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={isLogin ? handleLogin : handleSignup}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={theme.colors.text.onPrimary} />
-            ) : (
-              <Text style={styles.buttonText}>
-                {isLogin ? 'Log In' : 'Sign Up'}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toggleButton}
-            onPress={toggleMode}
-            disabled={loading}
-          >
-            <Text style={styles.toggleText}>
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Log in'}
+        {confirmationSent ? (
+          <View style={styles.confirmationBox}>
+            <Text style={styles.confirmationTitle}>Check your email</Text>
+            <Text style={styles.confirmationText}>
+              We sent a confirmation link to{'\n'}
+              <Text style={styles.confirmationEmail}>{email}</Text>
             </Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={styles.confirmationHint}>
+              Click the link in the email to activate your account, then come back and log in.
+            </Text>
+            <TouchableOpacity style={styles.toggleButton} onPress={toggleMode}>
+              <Text style={styles.toggleText}>Back to Log In</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor={theme.colors.text.tertiary}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!loading}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={theme.colors.text.tertiary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              editable={!loading}
+            />
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={isLogin ? handleLogin : handleSignup}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={theme.colors.text.onPrimary} />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {isLogin ? 'Log In' : 'Sign Up'}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toggleButton}
+              onPress={toggleMode}
+              disabled={loading}
+            >
+              <Text style={styles.toggleText}>
+                {isLogin
+                  ? "Don't have an account? Sign up"
+                  : 'Already have an account? Log in'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -186,5 +207,32 @@ const styles = StyleSheet.create({
   toggleText: {
     color: theme.colors.primary.light,
     fontSize: 14,
+  },
+  confirmationBox: {
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  confirmationTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+    marginBottom: 16,
+  },
+  confirmationText: {
+    fontSize: 15,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  confirmationEmail: {
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  confirmationHint: {
+    fontSize: 13,
+    color: theme.colors.text.tertiary,
+    textAlign: 'center',
+    lineHeight: 19,
   },
 });

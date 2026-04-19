@@ -24,6 +24,17 @@ export function handleError(error: any, context: string) {
     return;
   }
 
+  // Rate limiting
+  if (errorMessage.includes('security purposes') || errorMessage.includes('only request this after')) {
+    const match = errorMessage.match(/(\d+)\s*seconds?/i);
+    const wait = match ? `${match[1]} seconds` : 'a moment';
+    Alert.alert(
+      'Too Many Attempts',
+      `Please wait ${wait} before trying again.`
+    );
+    return;
+  }
+
   if (errorMessage.includes('User already registered')) {
     Alert.alert(
       'Account Exists',
