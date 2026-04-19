@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, TouchableOpacity, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import { theme } from '../theme';
+import { colors, spacing, typography } from '../theme';
+
 import EventsListScreen from './EventsListScreen';
 import EventDetailScreen from './EventDetailScreen';
 import CreateEventScreen from './CreateEventScreen';
@@ -33,35 +35,41 @@ const RidesStack = createStackNavigator();
 const AdminStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 
-// Notification Bell Button Component
-function NotificationBellButton({ navigation }: any) {
-  const { getBadgeCount } = useNotifications();
-  const [badgeCount, setBadgeCount] = useState(0);
+const HEADER_OPTIONS = {
+  headerStyle: {
+    backgroundColor: colors.bg.canvas,
+    borderBottomWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  headerTintColor: colors.text.primary,
+  headerTitleStyle: {
+    ...typography.title3,
+    color: colors.text.primary,
+  },
+  headerShadowVisible: false,
+  headerBackTitleVisible: false,
+};
 
-  useEffect(() => {
-    // Update badge count periodically
-    const updateBadge = async () => {
-      const count = await getBadgeCount();
-      setBadgeCount(count);
-    };
-
-    updateBadge();
-    const interval = setInterval(updateBadge, 5000); // Update every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [getBadgeCount]);
+function NotificationBell({ navigation }: { navigation: any }) {
+  const { unreadCount } = useNotifications();
 
   return (
     <TouchableOpacity
-      style={headerStyles.bellButton}
+      style={styles.bellButton}
       onPress={() => navigation.navigate('NotificationCenter')}
       activeOpacity={0.7}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <Text style={headerStyles.bellIcon}>🔔</Text>
-      {badgeCount > 0 && (
-        <View style={headerStyles.badge}>
-          <Text style={headerStyles.badgeText}>
-            {badgeCount > 99 ? '99+' : badgeCount}
+      <Ionicons
+        name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
+        size={22}
+        color={colors.text.primary}
+      />
+      {unreadCount > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>
+            {unreadCount > 99 ? '99+' : String(unreadCount)}
           </Text>
         </View>
       )}
@@ -69,278 +77,90 @@ function NotificationBellButton({ navigation }: any) {
   );
 }
 
-const headerStyles = StyleSheet.create({
-  bellButton: {
-    marginRight: 16,
-    position: 'relative',
-  },
-  bellIcon: {
-    fontSize: 24,
-  },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: theme.colors.functional.error,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: theme.colors.text.primary,
-    fontSize: 10,
-    fontWeight: '700',
-  },
+const notifScreenOptions = ({ navigation }: { navigation: any }) => ({
+  ...HEADER_OPTIONS,
+  headerRight: () => <NotificationBell navigation={navigation} />,
 });
 
-// Stack navigator for Events tab
 function EventsStackNavigator() {
   return (
-    <EventsStack.Navigator
-      screenOptions={({ navigation }) => ({
-        headerStyle: {
-          backgroundColor: theme.colors.background.primary,
-        },
-        headerTintColor: theme.colors.text.primary,
-        headerTitleStyle: {
-          fontWeight: '600',
-        },
-        headerRight: () => <NotificationBellButton navigation={navigation} />,
-      })}
-    >
-      <EventsStack.Screen 
-        name="EventsList" 
-        component={EventsListScreen}
-        options={{ title: 'Events' }}
-      />
-      <EventsStack.Screen 
-        name="EventDetail" 
-        component={EventDetailScreen}
-        options={{ title: 'Event Details' }}
-      />
-      <EventsStack.Screen 
-        name="CreateEvent" 
-        component={CreateEventScreen}
-        options={{ title: 'Create Event' }}
-      />
-      <EventsStack.Screen 
-        name="NotificationCenter" 
-        component={NotificationCenterScreen}
-        options={{ 
-          title: 'Notifications',
-          headerRight: undefined,
-        }}
-      />
-      <EventsStack.Screen 
-        name="SEPReaction" 
-        component={SEPReactionScreen}
-        options={{ title: 'Reaction Time Test' }}
-      />
-      <EventsStack.Screen 
-        name="SEPPhrase" 
-        component={SEPPhraseScreen}
-        options={{ title: 'Phrase Recording' }}
-      />
-      <EventsStack.Screen 
-        name="SEPSelfie" 
-        component={SEPSelfieScreen}
-        options={{ title: 'Selfie Capture' }}
-      />
-      <EventsStack.Screen 
-        name="SEPResult" 
-        component={SEPResultScreen}
-        options={{ 
-          title: 'SEP Results',
-          headerLeft: () => null,
-          gestureEnabled: false,
-        }}
-      />
-      <EventsStack.Screen 
-        name="DDActiveSession" 
-        component={DDActiveSessionScreen}
-        options={{ title: 'Active DD Session' }}
-      />
-      <EventsStack.Screen 
-        name="DDRideQueue" 
-        component={DDRideQueueScreen}
-        options={{ title: 'Ride Queue' }}
-      />
-      <EventsStack.Screen 
-        name="RideStatus" 
-        component={RideStatusScreen}
-        options={{ title: 'Ride Status' }}
-      />
+    <EventsStack.Navigator screenOptions={notifScreenOptions}>
+      <EventsStack.Screen name="EventsList" component={EventsListScreen} options={{ title: 'Events' }} />
+      <EventsStack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: 'Event' }} />
+      <EventsStack.Screen name="CreateEvent" component={CreateEventScreen} options={{ title: 'New Event' }} />
+      <EventsStack.Screen name="NotificationCenter" component={NotificationCenterScreen} options={{ title: 'Notifications', headerRight: undefined }} />
+      <EventsStack.Screen name="SEPReaction" component={SEPReactionScreen} options={{ title: '', headerTransparent: true }} />
+      <EventsStack.Screen name="SEPPhrase" component={SEPPhraseScreen} options={{ title: '', headerTransparent: true }} />
+      <EventsStack.Screen name="SEPSelfie" component={SEPSelfieScreen} options={{ title: '', headerTransparent: true }} />
+      <EventsStack.Screen name="SEPResult" component={SEPResultScreen} options={{ title: '', headerLeft: () => null, gestureEnabled: false }} />
+      <EventsStack.Screen name="DDActiveSession" component={DDActiveSessionScreen} options={{ title: 'On Duty' }} />
+      <EventsStack.Screen name="DDRideQueue" component={DDRideQueueScreen} options={{ title: 'Ride Queue' }} />
+      <EventsStack.Screen name="RideStatus" component={RideStatusScreen} options={{ title: 'Ride Status' }} />
     </EventsStack.Navigator>
   );
 }
 
-// Stack navigator for DDs tab
 function DDsStackNavigator() {
   return (
-    <DDsStack.Navigator
-      screenOptions={({ navigation }) => ({
-        headerStyle: {
-          backgroundColor: theme.colors.background.primary,
-        },
-        headerTintColor: theme.colors.text.primary,
-        headerTitleStyle: {
-          fontWeight: '600',
-        },
-        headerRight: () => <NotificationBellButton navigation={navigation} />,
-      })}
-    >
-      <DDsStack.Screen 
-        name="DDsList" 
-        component={DDsListScreen}
-        options={{ title: 'Active DDs' }}
-      />
-      <DDsStack.Screen 
-        name="DDDetail" 
-        component={DDDetailScreen}
-        options={{ title: 'DD Details' }}
-      />
-      <DDsStack.Screen 
-        name="NotificationCenter" 
-        component={NotificationCenterScreen}
-        options={{ 
-          title: 'Notifications',
-          headerRight: undefined,
-        }}
-      />
-      <DDsStack.Screen 
-        name="RideStatus" 
-        component={RideStatusScreen}
-        options={{ title: 'Ride Status' }}
-      />
+    <DDsStack.Navigator screenOptions={notifScreenOptions}>
+      <DDsStack.Screen name="DDsList" component={DDsListScreen} options={{ title: 'Find a DD' }} />
+      <DDsStack.Screen name="DDDetail" component={DDDetailScreen} options={{ title: 'Driver' }} />
+      <DDsStack.Screen name="NotificationCenter" component={NotificationCenterScreen} options={{ title: 'Notifications', headerRight: undefined }} />
+      <DDsStack.Screen name="RideStatus" component={RideStatusScreen} options={{ title: 'Ride Status' }} />
     </DDsStack.Navigator>
   );
 }
 
-// Stack navigator for Rides tab
 function RidesStackNavigator() {
   return (
-    <RidesStack.Navigator
-      screenOptions={({ navigation }) => ({
-        headerStyle: {
-          backgroundColor: theme.colors.background.primary,
-        },
-        headerTintColor: theme.colors.text.primary,
-        headerTitleStyle: {
-          fontWeight: '600',
-        },
-        headerRight: () => <NotificationBellButton navigation={navigation} />,
-      })}
-    >
-      <RidesStack.Screen 
-        name="RidesMain" 
-        component={RidesScreen}
-        options={{ title: 'Rides' }}
-      />
-      <RidesStack.Screen 
-        name="DDRideQueue" 
-        component={DDRideQueueScreen}
-        options={{ title: 'Ride Queue' }}
-      />
-      <RidesStack.Screen 
-        name="NotificationCenter" 
-        component={NotificationCenterScreen}
-        options={{ 
-          title: 'Notifications',
-          headerRight: undefined,
-        }}
-      />
-      <RidesStack.Screen 
-        name="RideStatus" 
-        component={RideStatusScreen}
-        options={{ title: 'Ride Status' }}
-      />
-      <RidesStack.Screen 
-        name="EventDetail" 
-        component={EventDetailScreen}
-        options={{ title: 'Event Details' }}
-      />
+    <RidesStack.Navigator screenOptions={notifScreenOptions}>
+      <RidesStack.Screen name="RidesMain" component={RidesScreen} options={{ title: 'Rides' }} />
+      <RidesStack.Screen name="DDRideQueue" component={DDRideQueueScreen} options={{ title: 'Ride Queue' }} />
+      <RidesStack.Screen name="NotificationCenter" component={NotificationCenterScreen} options={{ title: 'Notifications', headerRight: undefined }} />
+      <RidesStack.Screen name="RideStatus" component={RideStatusScreen} options={{ title: 'Ride Status' }} />
+      <RidesStack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: 'Event' }} />
     </RidesStack.Navigator>
   );
 }
 
-// Stack navigator for Admin tab
 function AdminStackNavigator() {
   return (
-    <AdminStack.Navigator
-      screenOptions={({ navigation }) => ({
-        headerStyle: {
-          backgroundColor: theme.colors.background.primary,
-        },
-        headerTintColor: theme.colors.text.primary,
-        headerTitleStyle: {
-          fontWeight: '600',
-        },
-        headerRight: () => <NotificationBellButton navigation={navigation} />,
-      })}
-    >
-      <AdminStack.Screen 
-        name="AdminDashboard" 
-        component={AdminDashboardScreen}
-        options={{ title: 'Admin' }}
-      />
-      <AdminStack.Screen 
-        name="AdminRideLog" 
-        component={AdminRideLogScreen}
-        options={{ title: 'Ride Activity Log' }}
-      />
-      <AdminStack.Screen 
-        name="NotificationCenter" 
-        component={NotificationCenterScreen}
-        options={{ 
-          title: 'Notifications',
-          headerRight: undefined,
-        }}
-      />
+    <AdminStack.Navigator screenOptions={notifScreenOptions}>
+      <AdminStack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: 'Admin' }} />
+      <AdminStack.Screen name="AdminRideLog" component={AdminRideLogScreen} options={{ title: 'Ride Log' }} />
+      <AdminStack.Screen name="NotificationCenter" component={NotificationCenterScreen} options={{ title: 'Notifications', headerRight: undefined }} />
     </AdminStack.Navigator>
   );
 }
 
-// Stack navigator for Profile tab
 function ProfileStackNavigator() {
   return (
-    <ProfileStack.Navigator
-      screenOptions={({ navigation }) => ({
-        headerStyle: {
-          backgroundColor: theme.colors.background.primary,
-        },
-        headerTintColor: theme.colors.text.primary,
-        headerTitleStyle: {
-          fontWeight: '600',
-        },
-        headerRight: () => <NotificationBellButton navigation={navigation} />,
-      })}
-    >
-      <ProfileStack.Screen 
-        name="ProfileMain" 
-        component={ProfileScreen}
-        options={{ title: 'Profile' }}
-      />
-      <ProfileStack.Screen 
-        name="NotificationPreferences" 
-        component={NotificationPreferencesScreen}
-        options={{ title: 'Notification Settings' }}
-      />
-      <ProfileStack.Screen 
-        name="NotificationCenter" 
-        component={NotificationCenterScreen}
-        options={{ 
-          title: 'Notifications',
-          headerRight: undefined,
-        }}
-      />
+    <ProfileStack.Navigator screenOptions={notifScreenOptions}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} options={{ title: 'Profile' }} />
+      <ProfileStack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} options={{ title: 'Notifications' }} />
+      <ProfileStack.Screen name="NotificationCenter" component={NotificationCenterScreen} options={{ title: 'Notification History', headerRight: undefined }} />
     </ProfileStack.Navigator>
   );
 }
 
-// Tab Navigator component
+type TabIconName = keyof typeof Ionicons.glyphMap;
+
+function TabBarIcon({
+  name,
+  focused,
+}: {
+  name: { active: TabIconName; inactive: TabIconName };
+  focused: boolean;
+}) {
+  return (
+    <Ionicons
+      name={focused ? name.active : name.inactive}
+      size={24}
+      color={focused ? colors.text.primary : colors.text.tertiary}
+    />
+  );
+}
+
 function TabNavigator() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -349,94 +169,123 @@ function TabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: theme.colors.background.primary,
-          borderTopColor: theme.colors.border.default,
-        },
-        tabBarActiveTintColor: theme.colors.primary.light,
-        tabBarInactiveTintColor: theme.colors.state.inactive,
+        tabBarStyle: styles.tabBar,
+        tabBarActiveTintColor: colors.text.primary,
+        tabBarInactiveTintColor: colors.text.tertiary,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarShowLabel: true,
       }}
     >
-      <Tab.Screen 
-        name="Events" 
+      <Tab.Screen
+        name="Events"
         component={EventsStackNavigator}
         options={{
           tabBarLabel: 'Events',
-          tabBarIcon: ({ color }) => <TabIcon name="calendar" color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon name={{ active: 'calendar', inactive: 'calendar-outline' }} focused={focused} />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="DDs" 
+      <Tab.Screen
+        name="DDs"
         component={DDsStackNavigator}
         options={{
-          tabBarLabel: 'Find DDs',
-          tabBarIcon: ({ color }) => <TabIcon name="search" color={color} />,
+          tabBarLabel: 'Find DD',
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon name={{ active: 'car', inactive: 'car-outline' }} focused={focused} />
+          ),
         }}
       />
-      <Tab.Screen 
-        name="Rides" 
+      <Tab.Screen
+        name="Rides"
         component={RidesStackNavigator}
         options={{
           tabBarLabel: 'Rides',
-          tabBarIcon: ({ color }) => <TabIcon name="car" color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon name={{ active: 'navigate', inactive: 'navigate-outline' }} focused={focused} />
+          ),
         }}
       />
       {isAdmin && (
-        <Tab.Screen 
-          name="Admin" 
+        <Tab.Screen
+          name="Admin"
           component={AdminStackNavigator}
           options={{
             tabBarLabel: 'Admin',
-            tabBarIcon: ({ color }) => <TabIcon name="shield" color={color} />,
+            tabBarIcon: ({ focused }) => (
+              <TabBarIcon
+                name={{ active: 'shield-checkmark', inactive: 'shield-checkmark-outline' }}
+                focused={focused}
+              />
+            ),
           }}
         />
       )}
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileStackNavigator}
         options={{
           tabBarLabel: 'Profile',
-          tabBarIcon: ({ color }) => <TabIcon name="person" color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon name={{ active: 'person', inactive: 'person-outline' }} focused={focused} />
+          ),
         }}
       />
     </Tab.Navigator>
   );
 }
 
-// Main App Screen with Stack Navigator for modals
 export default function MainAppScreen() {
   return (
     <MainStack.Navigator screenOptions={{ headerShown: false }}>
-      <MainStack.Screen 
-        name="MainTabs" 
-        component={TabNavigator}
-      />
-      <MainStack.Screen 
-        name="DDUpgrade" 
+      <MainStack.Screen name="MainTabs" component={TabNavigator} />
+      <MainStack.Screen
+        name="DDUpgrade"
         component={DDUpgradeNavigator}
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
+        options={{ presentation: 'modal', headerShown: false }}
       />
     </MainStack.Navigator>
   );
 }
 
-// Simple icon component using text emojis for MVP
-// In production, you'd use @expo/vector-icons or similar
-function TabIcon({ name, color }: { name: string; color: string }) {
-  const icons: { [key: string]: string } = {
-    calendar: '📅',
-    car: '🚗',
-    search: '🔍',
-    shield: '🛡️',
-    person: '👤',
-  };
-
-  return (
-    <Text style={{ fontSize: 24, color }}>
-      {icons[name] || '•'}
-    </Text>
-  );
-}
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: colors.bg.canvas,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border.subtle,
+    paddingTop: spacing.xs,
+    paddingBottom: Platform.OS === 'ios' ? 0 : spacing.sm,
+    height: Platform.OS === 'ios' ? 82 : 60,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  tabLabel: {
+    ...typography.caption,
+    marginTop: 2,
+  },
+  bellButton: {
+    marginRight: spacing.base,
+    position: 'relative',
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: colors.ui.error,
+    borderRadius: 999,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+});
