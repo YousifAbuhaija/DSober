@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { theme } from '../theme/colors';
+import { colors, spacing, typography, radii } from '../theme';
 
 interface NotificationPreferences {
   rideRequests: boolean;
@@ -95,7 +95,6 @@ export default function NotificationPreferencesScreen() {
         .single();
 
       if (error) {
-        console.error('Error fetching notification preferences:', error);
         Alert.alert('Error', 'Failed to load notification preferences');
         return;
       }
@@ -112,7 +111,6 @@ export default function NotificationPreferencesScreen() {
         });
       }
     } catch (error) {
-      console.error('Error fetching preferences:', error);
       Alert.alert('Error', 'Failed to load notification preferences');
     } finally {
       setLoading(false);
@@ -170,13 +168,11 @@ export default function NotificationPreferencesScreen() {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error updating notification preferences:', error);
         // Revert optimistic update
         setPreferences(preferences);
         Alert.alert('Error', 'Failed to update notification preferences');
       }
     } catch (error) {
-      console.error('Error updating preferences:', error);
       // Revert optimistic update
       setPreferences(preferences);
       Alert.alert('Error', 'Failed to update notification preferences');
@@ -205,7 +201,7 @@ export default function NotificationPreferencesScreen() {
   if (loading || !preferences) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        <ActivityIndicator size="large" color={colors.brand.primary} />
       </View>
     );
   }
@@ -257,10 +253,10 @@ export default function NotificationPreferencesScreen() {
                 onValueChange={(newValue) => updatePreferences(item.key, newValue)}
                 disabled={disabled || updating}
                 trackColor={{
-                  false: theme.colors.state.inactive,
-                  true: theme.colors.primary.main,
+                  false: colors.bg.muted,
+                  true: colors.brand.primary,
                 }}
-                thumbColor={value ? theme.colors.primary.light : theme.colors.background.elevated}
+                thumbColor={value ? colors.brand.primary : colors.bg.surface}
               />
             </View>
           );
@@ -279,7 +275,7 @@ export default function NotificationPreferencesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
   content: {
     padding: 16,
@@ -288,7 +284,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
   header: {
     marginBottom: 24,
@@ -296,16 +292,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 8,
   },
   headerDescription: {
     fontSize: 16,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     lineHeight: 22,
   },
   section: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 4,
     shadowColor: '#000',
@@ -320,7 +316,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
+    borderBottomColor: colors.border.default,
   },
   preferenceInfo: {
     flex: 1,
@@ -334,14 +330,14 @@ const styles = StyleSheet.create({
   preferenceLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginRight: 8,
   },
   disabledLabel: {
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
   criticalBadge: {
-    backgroundColor: theme.colors.functional.error,
+    backgroundColor: colors.ui.error,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -349,32 +345,32 @@ const styles = StyleSheet.create({
   criticalBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
     textTransform: 'uppercase',
   },
   preferenceDescription: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     lineHeight: 20,
   },
   disabledDescription: {
-    color: theme.colors.text.tertiary,
+    color: colors.text.tertiary,
   },
   disabledNote: {
     fontSize: 12,
-    color: theme.colors.functional.info,
+    color: colors.ui.info,
     marginTop: 4,
     fontStyle: 'italic',
   },
   footer: {
     marginTop: 24,
     padding: 16,
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
   },
   footerText: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     lineHeight: 20,
     textAlign: 'center',
   },

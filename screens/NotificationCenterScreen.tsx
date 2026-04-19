@@ -8,11 +8,14 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import { theme } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { navigateFromNotification, NotificationData } from '../utils/notificationNavigation';
+import EmptyState from '../components/ui/EmptyState';
+import LoadingScreen from '../components/ui/LoadingScreen';
+import { colors, spacing, typography, radii } from '../theme';
 
 interface NotificationItem {
   id: string;
@@ -33,10 +36,60 @@ interface GroupedNotifications {
 const ITEMS_PER_PAGE = 20;
 const DAYS_TO_FETCH = 30;
 
+const NOTIF_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  ride_request:        'car-outline',
+  ride_accepted:       'checkmark-circle-outline',
+  ride_picked_up:      'car-outline',
+  ride_cancelled:      'close-circle-outline',
+  sep_failure:         'warning-outline',
+  dd_revoked:          'warning-outline',
+  dd_session_started:  'radio-button-on-outline',
+  dd_session_reminder: 'time-outline',
+  dd_request_approved: 'checkmark-circle-outline',
+  dd_request_rejected: 'close-circle-outline',
+  event_active:        'calendar-outline',
+  event_cancelled:     'calendar-outline',
+  dd_assigned:         'person-outline',
+};
+
+const NOTIF_ICON_COLORS: Record<string, string> = {
+  ride_request:        colors.brand.primary,
+  ride_accepted:       colors.ui.success,
+  ride_picked_up:      colors.ui.info,
+  ride_cancelled:      colors.ui.error,
+  sep_failure:         colors.ui.error,
+  dd_revoked:          colors.ui.warning,
+  dd_session_started:  colors.ui.success,
+  dd_session_reminder: colors.ui.warning,
+  dd_request_approved: colors.ui.success,
+  dd_request_rejected: colors.ui.error,
+  event_active:        colors.brand.primary,
+  event_cancelled:     colors.ui.error,
+  dd_assigned:         colors.brand.primary,
+};
+
+const isSameDay = (a: Date, b: Date) =>
+  a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+
+const formatDateKey = (date: Date): string => {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (isSameDay(date, today)) return 'Today';
+  if (isSameDay(date, yesterday)) return 'Yesterday';
+  return date.toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric',
+    year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
+  });
+};
+
+const formatTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
 export default function NotificationCenterScreen({ navigation }: any) {
   const { user } = useAuth();
   const { refreshUnreadCount, clearBadge } = useNotifications();
-  
+
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,62 +97,36 @@ export default function NotificationCenterScreen({ navigation }: any) {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
 
-  /**
-   * Fetch notifications from database
-   */
-  const fetchNotifications = useCallback(async (pageNum: number = 0, append: boolean = false) => {
+  const fetchNotifications = useCallback(async (pageNum = 0, append = false) => {
     if (!user?.id) return;
-
     try {
-      if (!append) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
+      if (!append) setLoading(true); else setLoadingMore(true);
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - DAYS_TO_FETCH);
 
-      // Calculate date range (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - DAYS_TO_FETCH);
-
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .gte('created_at', thirtyDaysAgo.toISOString())
+        .gte('created_at', cutoff.toISOString())
         .order('created_at', { ascending: false })
         .range(pageNum * ITEMS_PER_PAGE, (pageNum + 1) * ITEMS_PER_PAGE - 1);
 
-      if (error) {
-        console.error('Error fetching notifications:', error);
-        return;
-      }
-
-      const fetchedNotifications = data || [];
-
+      const fetched = data || [];
       if (append) {
-        setNotifications(prev => [...prev, ...fetchedNotifications]);
+        setNotifications((prev) => [...prev, ...fetched]);
       } else {
-        setNotifications(fetchedNotifications);
+        setNotifications(fetched);
+        const unreadIds = fetched.filter((n) => !n.read).map((n) => n.id);
+        if (unreadIds.length > 0) {
+          await supabase.from('notifications').update({ read: true }).in('id', unreadIds);
+          await clearBadge();
+          await refreshUnreadCount();
+          setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+        }
       }
-
-      // Mark all unread notifications as read now that the user has seen them
-      const unreadIds = fetchedNotifications.filter(n => !n.read).map(n => n.id);
-      if (unreadIds.length > 0 && !append) {
-        await supabase
-          .from('notifications')
-          .update({ read: true })
-          .in('id', unreadIds);
-        await clearBadge();
-        await refreshUnreadCount();
-        // Update local state so unread indicators disappear
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      }
-
-      // Check if there are more notifications to load
-      setHasMore(fetchedNotifications.length === ITEMS_PER_PAGE);
+      setHasMore(fetched.length === ITEMS_PER_PAGE);
       setPage(pageNum);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -107,16 +134,8 @@ export default function NotificationCenterScreen({ navigation }: any) {
     }
   }, [user?.id]);
 
-  /**
-   * Initial load
-   */
-  useEffect(() => {
-    fetchNotifications(0, false);
-  }, [fetchNotifications]);
+  useEffect(() => { fetchNotifications(0, false); }, [fetchNotifications]);
 
-  /**
-   * Handle pull-to-refresh
-   */
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     setPage(0);
@@ -124,348 +143,136 @@ export default function NotificationCenterScreen({ navigation }: any) {
     fetchNotifications(0, false);
   }, [fetchNotifications]);
 
-  /**
-   * Handle load more (pagination)
-   */
   const handleLoadMore = useCallback(() => {
-    if (!loadingMore && hasMore && !loading) {
-      fetchNotifications(page + 1, true);
-    }
+    if (!loadingMore && hasMore && !loading) fetchNotifications(page + 1, true);
   }, [loadingMore, hasMore, loading, page, fetchNotifications]);
 
-  /**
-   * Group notifications by date
-   */
-  const groupNotificationsByDate = useCallback((): GroupedNotifications[] => {
-    const grouped: { [key: string]: NotificationItem[] } = {};
-
-    notifications.forEach(notification => {
-      const date = new Date(notification.created_at);
-      const dateKey = formatDateKey(date);
-
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
-      }
-      grouped[dateKey].push(notification);
-    });
-
-    return Object.entries(grouped).map(([date, notifs]) => ({
-      date,
-      notifications: notifs,
-    }));
-  }, [notifications]);
-
-  /**
-   * Format date key for grouping
-   */
-  const formatDateKey = (date: Date): string => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (isSameDay(date, today)) {
-      return 'Today';
-    } else if (isSameDay(date, yesterday)) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
-      });
+  const handleTap = async (item: NotificationItem) => {
+    if (!item.read) {
+      await supabase.from('notifications').update({ read: true }).eq('id', item.id);
+      setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)));
     }
+    if (item.data) navigateFromNotification(item.data, navigation);
   };
 
-  /**
-   * Check if two dates are the same day
-   */
-  const isSameDay = (date1: Date, date2: Date): boolean => {
-    return (
-      date1.getDate() === date2.getDate() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getFullYear() === date2.getFullYear()
-    );
-  };
-
-  /**
-   * Format time for display
-   */
-  const formatTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
+  const grouped: GroupedNotifications[] = (() => {
+    const map: Record<string, NotificationItem[]> = {};
+    notifications.forEach((n) => {
+      const key = formatDateKey(new Date(n.created_at));
+      if (!map[key]) map[key] = [];
+      map[key].push(n);
     });
-  };
+    return Object.entries(map).map(([date, notifs]) => ({ date, notifications: notifs }));
+  })();
 
-  /**
-   * Get icon for notification type
-   */
-  const getNotificationIcon = (type: string): string => {
-    const icons: { [key: string]: string } = {
-      ride_request: '🚗',
-      ride_accepted: '✅',
-      ride_picked_up: '🚙',
-      ride_cancelled: '❌',
-      sep_failure: '🚨',
-      dd_revoked: '⚠️',
-      dd_session_started: '🟢',
-      dd_session_reminder: '⏰',
-      dd_request_approved: '✅',
-      dd_request_rejected: '❌',
-      event_active: '🎉',
-      event_cancelled: '❌',
-      dd_assigned: '👤',
-    };
-    return icons[type] || '📬';
-  };
-
-  /**
-   * Handle notification tap
-   */
-  const handleNotificationTap = async (notification: NotificationItem) => {
-    try {
-      // Mark as read if not already
-      if (!notification.read) {
-        const { error } = await supabase
-          .from('notifications')
-          .update({ read: true })
-          .eq('id', notification.id);
-
-        if (!error) {
-          setNotifications(prev =>
-            prev.map(n => (n.id === notification.id ? { ...n, read: true } : n))
-          );
-        }
-      }
-
-      // Navigate to relevant screen
-      if (notification.data) {
-        navigateFromNotification(notification.data, navigation);
-      }
-    } catch (error) {
-      console.error('Error handling notification tap:', error);
-    }
-  };
-
-  /**
-   * Render notification item
-   */
-  const renderNotificationItem = ({ item }: { item: NotificationItem }) => (
-    <TouchableOpacity
-      style={[
-        styles.notificationItem,
-        !item.read && styles.unreadNotification,
-      ]}
-      onPress={() => handleNotificationTap(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.notificationIcon}>
-        <Text style={styles.iconText}>{getNotificationIcon(item.type)}</Text>
-      </View>
-      <View style={styles.notificationContent}>
-        <View style={styles.notificationHeader}>
-          <Text style={styles.notificationTitle} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={styles.notificationTime}>{formatTime(item.created_at)}</Text>
-        </View>
-        <Text style={styles.notificationBody} numberOfLines={2}>
-          {item.body}
-        </Text>
-        {!item.read && <View style={styles.unreadIndicator} />}
-      </View>
-    </TouchableOpacity>
-  );
-
-  /**
-   * Render date section header
-   */
-  const renderSectionHeader = (date: string) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionHeaderText}>{date}</Text>
-    </View>
-  );
-
-  /**
-   * Render grouped notifications
-   */
-  const renderGroupedNotifications = () => {
-    const grouped = groupNotificationsByDate();
-
-    return (
-      <FlatList
-        data={grouped}
-        keyExtractor={(item) => item.date}
-        renderItem={({ item }) => (
-          <View>
-            {renderSectionHeader(item.date)}
-            {item.notifications.map(notification => (
-              <View key={notification.id}>
-                {renderNotificationItem({ item: notification })}
-              </View>
-            ))}
-          </View>
-        )}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.colors.primary.light}
-            colors={[theme.colors.primary.light]}
-          />
-        }
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          loadingMore ? (
-            <View style={styles.loadingMore}>
-              <ActivityIndicator size="small" color={theme.colors.primary.light} />
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📭</Text>
-              <Text style={styles.emptyText}>No notifications yet</Text>
-              <Text style={styles.emptySubtext}>
-                You'll see notifications here when you receive them
-              </Text>
-            </View>
-          ) : null
-        }
-        contentContainerStyle={notifications.length === 0 ? styles.emptyList : undefined}
-      />
-    );
-  };
-
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary.light} />
-      </View>
-    );
-  }
+  if (loading && !refreshing) return <LoadingScreen message="Loading notifications…" />;
 
   return (
     <View style={styles.container}>
-      {renderGroupedNotifications()}
+      <FlatList
+        data={grouped}
+        keyExtractor={(item) => item.date}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.brand.primary} />
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        contentContainerStyle={notifications.length === 0 ? styles.emptyList : undefined}
+        ListEmptyComponent={
+          <EmptyState icon="notifications-outline" title="No notifications" subtitle="You'll see notifications here when you receive them." />
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.loadingMore}>
+              <ActivityIndicator size="small" color={colors.brand.primary} />
+            </View>
+          ) : null
+        }
+        renderItem={({ item: group }) => (
+          <View>
+            <View style={styles.dayHeader}>
+              <Text style={styles.dayHeaderText}>{group.date}</Text>
+            </View>
+            {group.notifications.map((n) => {
+              const iconName = NOTIF_ICONS[n.type] ?? 'notifications-outline';
+              const iconColor = NOTIF_ICON_COLORS[n.type] ?? colors.brand.primary;
+              return (
+                <TouchableOpacity
+                  key={n.id}
+                  style={[styles.item, !n.read && styles.itemUnread]}
+                  onPress={() => handleTap(n)}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.iconWrap, { backgroundColor: `${iconColor}22` }]}>
+                    <Ionicons name={iconName} size={20} color={iconColor} />
+                  </View>
+                  <View style={styles.itemContent}>
+                    <View style={styles.itemHeader}>
+                      <Text style={styles.itemTitle} numberOfLines={1}>{n.title}</Text>
+                      <Text style={styles.itemTime}>{formatTime(n.created_at)}</Text>
+                    </View>
+                    <Text style={styles.itemBody} numberOfLines={2}>{n.body}</Text>
+                  </View>
+                  {!n.read && <View style={styles.unreadDot} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
-  },
-  sectionHeader: {
-    backgroundColor: theme.colors.background.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  container: { flex: 1, backgroundColor: colors.bg.canvas },
+  emptyList: { flex: 1 },
+  dayHeader: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.bg.canvas,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
+    borderBottomColor: colors.border.subtle,
   },
-  sectionHeaderText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  notificationItem: {
+  dayHeaderText: { ...typography.label, color: colors.text.tertiary },
+  item: {
     flexDirection: 'row',
-    padding: 16,
-    backgroundColor: theme.colors.background.elevated,
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.base,
+    backgroundColor: colors.bg.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
+    borderBottomColor: colors.border.subtle,
+    gap: spacing.md,
   },
-  unreadNotification: {
-    backgroundColor: theme.colors.background.input,
-  },
-  notificationIcon: {
+  itemUnread: { backgroundColor: colors.bg.elevated },
+  iconWrap: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.primary.main,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
+    flexShrink: 0,
   },
-  iconText: {
-    fontSize: 20,
-  },
-  notificationContent: {
-    flex: 1,
-    position: 'relative',
-  },
-  notificationHeader: {
+  itemContent: { flex: 1 },
+  itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
+    gap: spacing.sm,
   },
-  notificationTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginRight: 8,
-  },
-  notificationTime: {
-    fontSize: 12,
-    color: theme.colors.text.tertiary,
-  },
-  notificationBody: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
-  },
-  unreadIndicator: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
+  itemTitle: { ...typography.bodyBold, color: colors.text.primary, flex: 1 },
+  itemTime: { ...typography.caption, color: colors.text.tertiary },
+  itemBody: { ...typography.callout, color: colors.text.secondary, lineHeight: 20 },
+  unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.colors.primary.light,
+    backgroundColor: colors.brand.primary,
+    marginTop: 6,
+    flexShrink: 0,
   },
-  loadingMore: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  emptyList: {
-    flexGrow: 1,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  loadingMore: { paddingVertical: spacing.xl, alignItems: 'center' },
 });

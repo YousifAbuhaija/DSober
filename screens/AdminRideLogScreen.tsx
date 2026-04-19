@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { RideRequest, User, Event } from '../types/database.types';
-import { theme } from '../theme/colors';
+import { colors, spacing, typography, radii } from '../theme';
 
 interface RideRequestWithDetails extends RideRequest {
   riderName: string;
@@ -175,7 +175,6 @@ export default function AdminRideLogScreen() {
       calculateDDStats(mappedRequests);
       calculateEventStats(mappedRequests, mappedEvents);
     } catch (error) {
-      console.error('Error fetching ride log data:', error);
       Alert.alert('Error', 'Failed to load ride activity log');
     } finally {
       setLoading(false);
@@ -356,17 +355,17 @@ export default function AdminRideLogScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return theme.colors.functional.warning;
+        return colors.ui.warning;
       case 'accepted':
-        return theme.colors.functional.success;
+        return colors.ui.success;
       case 'picked_up':
-        return theme.colors.primary.main;
+        return colors.brand.primary;
       case 'completed':
-        return theme.colors.state.inactive;
+        return colors.bg.muted;
       case 'cancelled':
-        return theme.colors.functional.error;
+        return colors.ui.error;
       default:
-        return theme.colors.state.inactive;
+        return colors.bg.muted;
     }
   };
 
@@ -653,7 +652,7 @@ export default function AdminRideLogScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        <ActivityIndicator size="large" color={colors.brand.primary} />
       </View>
     );
   }
@@ -701,20 +700,20 @@ export default function AdminRideLogScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
   header: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
+    borderBottomColor: colors.border.default,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -722,18 +721,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
   },
   filterToggle: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
   },
   filterToggleText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.primary.main,
+    color: colors.brand.primary,
   },
   scrollContent: {
     paddingBottom: 16,
@@ -745,7 +744,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -758,16 +757,16 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
+    color: colors.text.tertiary,
     textAlign: 'center',
   },
   filtersContainer: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 16,
@@ -784,7 +783,7 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 8,
   },
   filterButtons: {
@@ -796,21 +795,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
     borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    borderColor: colors.border.default,
   },
   filterButtonActive: {
-    backgroundColor: theme.colors.primary.main,
-    borderColor: theme.colors.primary.main,
+    backgroundColor: colors.brand.primary,
+    borderColor: colors.brand.primary,
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
   filterButtonTextActive: {
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
   logSection: {
     paddingHorizontal: 16,
@@ -818,11 +817,11 @@ const styles = StyleSheet.create({
   logTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 12,
   },
   rideCard: {
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -846,11 +845,11 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
   rideTime: {
     fontSize: 12,
-    color: theme.colors.text.tertiary,
+    color: colors.text.tertiary,
   },
   rideInfo: {
     gap: 8,
@@ -862,11 +861,11 @@ const styles = StyleSheet.create({
   rideLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
   rideValue: {
     fontSize: 14,
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     flex: 1,
     textAlign: 'right',
   },
@@ -881,13 +880,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: theme.colors.text.tertiary,
+    color: colors.text.tertiary,
     textAlign: 'center',
     paddingHorizontal: 32,
     lineHeight: 20,
@@ -895,7 +894,7 @@ const styles = StyleSheet.create({
   ddStatsSection: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -909,23 +908,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
   },
   sectionToggleTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
   },
   sectionToggleIcon: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
   ddStatsContent: {
     padding: 16,
     gap: 12,
   },
   ddStatCard: {
-    backgroundColor: theme.colors.background.input,
+    backgroundColor: colors.bg.input,
     borderRadius: 8,
     padding: 12,
   },
@@ -938,11 +937,11 @@ const styles = StyleSheet.create({
   ddStatName: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     flex: 1,
   },
   ddStatBadge: {
-    backgroundColor: theme.colors.primary.main,
+    backgroundColor: colors.brand.primary,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -958,17 +957,17 @@ const styles = StyleSheet.create({
   },
   ddStatItemLabel: {
     fontSize: 13,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
   ddStatItemValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
   },
   eventStatsSection: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: theme.colors.background.elevated,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -980,7 +979,7 @@ const styles = StyleSheet.create({
   eventStatsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 12,
   },
   eventStatCard: {
@@ -989,7 +988,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.default,
+    borderBottomColor: colors.border.default,
   },
   eventStatInfo: {
     flex: 1,
@@ -997,15 +996,15 @@ const styles = StyleSheet.create({
   eventStatName: {
     fontSize: 15,
     fontWeight: '500',
-    color: theme.colors.text.primary,
+    color: colors.text.primary,
     marginBottom: 2,
   },
   eventStatDate: {
     fontSize: 13,
-    color: theme.colors.text.secondary,
+    color: colors.text.secondary,
   },
   eventStatBadge: {
-    backgroundColor: theme.colors.functional.success,
+    backgroundColor: colors.ui.success,
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1015,6 +1014,6 @@ const styles = StyleSheet.create({
   eventStatBadgeText: {
     fontSize: 14,
     fontWeight: '700',
-    color: theme.colors.text.onPrimary,
+    color: '#fff',
   },
 });
