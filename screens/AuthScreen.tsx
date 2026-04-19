@@ -1,238 +1,327 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  Animated,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { handleError } from '../utils/errorHandler';
-import { theme } from '../theme/colors';
+import ScreenWrapper from '../components/ui/ScreenWrapper';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import { colors, spacing, typography, radii } from '../theme';
+
+type Mode = 'login' | 'signup';
 
 export default function AuthScreen() {
+  const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
+  const passwordRef = useRef<TextInput>(null);
   const { signIn, signUp } = useAuth();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await signIn(email, password);
-    } catch (error: any) {
-      handleError(error, 'Login');
-    } finally {
-      setLoading(false);
-    }
+  const validate = () => {
+    const next: typeof errors = {};
+    if (!email.trim()) next.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(email)) next.email = 'Enter a valid email';
+    if (!password) next.password = 'Password is required';
+    else if (mode === 'signup' && password.length < 6)
+      next.password = 'Password must be at least 6 characters';
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
-  const handleSignup = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
-
+  const handleSubmit = async () => {
+    if (!validate()) return;
     setLoading(true);
     try {
-      const { needsEmailConfirmation } = await signUp(email, password);
-      if (needsEmailConfirmation) {
-        setConfirmationSent(true);
+      if (mode === 'login') {
+        await signIn(email.trim(), password);
+      } else {
+        const { needsEmailConfirmation } = await signUp(email.trim(), password);
+        if (needsEmailConfirmation) setConfirmationSent(true);
       }
     } catch (error: any) {
-      handleError(error, 'Signup');
+      handleError(error, mode === 'login' ? 'Login' : 'Signup');
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
+  const switchMode = () => {
+    setMode((m) => (m === 'login' ? 'signup' : 'login'));
     setEmail('');
     setPassword('');
+    setErrors({});
     setConfirmationSent(false);
   };
 
+  if (confirmationSent) {
+    return (
+      <ScreenWrapper keyboard>
+        <View style={styles.confirmContainer}>
+          <View style={styles.confirmIcon}>
+            <Ionicons name="mail-outline" size={40} color={colors.brand.primary} />
+          </View>
+          <Text style={styles.confirmTitle}>Check your inbox</Text>
+          <Text style={styles.confirmBody}>
+            We sent a confirmation link to{'\n'}
+            <Text style={styles.confirmEmail}>{email}</Text>
+          </Text>
+          <Text style={styles.confirmHint}>
+            Click the link to activate your account, then come back and log in.
+          </Text>
+          <TouchableOpacity style={styles.backLink} onPress={switchMode}>
+            <Ionicons name="arrow-back" size={16} color={colors.brand.primary} />
+            <Text style={styles.backLinkText}>Back to log in</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenWrapper>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <View style={styles.content}>
-        <Text style={styles.title}>DSober</Text>
-        <Text style={styles.subtitle}>
-          {isLogin ? 'Welcome back' : 'Create your account'}
-        </Text>
+    <ScreenWrapper keyboard scroll>
+      <View style={styles.container}>
+        {/* Wordmark */}
+        <View style={styles.header}>
+          <Text style={styles.wordmark}>DSober</Text>
+          <Text style={styles.tagline}>Safe rides, every night.</Text>
+        </View>
 
-        {confirmationSent ? (
-          <View style={styles.confirmationBox}>
-            <Text style={styles.confirmationTitle}>Check your email</Text>
-            <Text style={styles.confirmationText}>
-              We sent a confirmation link to{'\n'}
-              <Text style={styles.confirmationEmail}>{email}</Text>
+        {/* Mode toggle pill */}
+        <View style={styles.modePill}>
+          <TouchableOpacity
+            style={[styles.modeOption, mode === 'login' && styles.modeOptionActive]}
+            onPress={() => mode !== 'login' && switchMode()}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeText, mode === 'login' && styles.modeTextActive]}>
+              Log In
             </Text>
-            <Text style={styles.confirmationHint}>
-              Click the link in the email to activate your account, then come back and log in.
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeOption, mode === 'signup' && styles.modeOptionActive]}
+            onPress={() => mode !== 'signup' && switchMode()}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeText, mode === 'signup' && styles.modeTextActive]}>
+              Sign Up
             </Text>
-            <TouchableOpacity style={styles.toggleButton} onPress={toggleMode}>
-              <Text style={styles.toggleText}>Back to Log In</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.form}>
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor={theme.colors.text.tertiary}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              editable={!loading}
-            />
+          </TouchableOpacity>
+        </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor={theme.colors.text.tertiary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              editable={!loading}
-            />
+        {/* Form */}
+        <View style={styles.form}>
+          <Input
+            label="Email"
+            value={email}
+            onChangeText={(v) => {
+              setEmail(v);
+              if (errors.email) setErrors((e) => ({ ...e, email: undefined }));
+            }}
+            error={errors.email}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            editable={!loading}
+            autoComplete="email"
+          />
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={isLogin ? handleLogin : handleSignup}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={theme.colors.text.onPrimary} />
-              ) : (
-                <Text style={styles.buttonText}>
-                  {isLogin ? 'Log In' : 'Sign Up'}
-                </Text>
-              )}
-            </TouchableOpacity>
+          <Input
+            ref={passwordRef}
+            label="Password"
+            value={password}
+            onChangeText={(v) => {
+              setPassword(v);
+              if (errors.password) setErrors((e) => ({ ...e, password: undefined }));
+            }}
+            error={errors.password}
+            secureTextEntry={!showPassword}
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit}
+            editable={!loading}
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            rightElement={
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} activeOpacity={0.7}>
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={colors.text.tertiary}
+                />
+              </TouchableOpacity>
+            }
+          />
 
-            <TouchableOpacity
-              style={styles.toggleButton}
-              onPress={toggleMode}
-              disabled={loading}
-            >
-              <Text style={styles.toggleText}>
-                {isLogin
-                  ? "Don't have an account? Sign up"
-                  : 'Already have an account? Log in'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          <Button
+            onPress={handleSubmit}
+            label={mode === 'login' ? 'Log In' : 'Create Account'}
+            loading={loading}
+            disabled={loading}
+            fullWidth
+            size="lg"
+            style={styles.cta}
+          />
+        </View>
+
+        {/* Divider */}
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Switch mode link */}
+        <TouchableOpacity style={styles.switchRow} onPress={switchMode} disabled={loading}>
+          <Text style={styles.switchText}>
+            {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+          </Text>
+          <Text style={styles.switchAction}>
+            {mode === 'login' ? ' Sign up' : ' Log in'}
+          </Text>
+        </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    flex: 1,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing['3xl'],
+    paddingBottom: spacing['2xl'],
     justifyContent: 'center',
-    padding: 24,
   },
-  title: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-    color: theme.colors.text.primary,
+  header: {
+    alignItems: 'center',
+    marginBottom: spacing['3xl'],
   },
-  subtitle: {
-    fontSize: 18,
-    textAlign: 'center',
-    color: theme.colors.text.secondary,
-    marginBottom: 48,
+  wordmark: {
+    ...typography.display,
+    color: colors.text.primary,
+    letterSpacing: -1,
+  },
+  tagline: {
+    ...typography.callout,
+    color: colors.text.tertiary,
+    marginTop: spacing.xs,
+  },
+  modePill: {
+    flexDirection: 'row',
+    backgroundColor: colors.bg.surface,
+    borderRadius: radii.lg,
+    padding: 4,
+    marginBottom: spacing['2xl'],
+  },
+  modeOption: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    alignItems: 'center',
+  },
+  modeOptionActive: {
+    backgroundColor: colors.bg.elevated,
+  },
+  modeText: {
+    ...typography.bodyBold,
+    color: colors.text.tertiary,
+  },
+  modeTextActive: {
+    color: colors.text.primary,
   },
   form: {
-    width: '100%',
+    gap: spacing.xs,
   },
-  input: {
-    backgroundColor: theme.colors.background.input,
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    color: theme.colors.text.primary,
+  cta: {
+    marginTop: spacing.sm,
   },
-  button: {
-    backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 16,
+  divider: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginVertical: spacing.xl,
+    gap: spacing.md,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border.subtle,
   },
-  buttonText: {
-    color: theme.colors.text.onPrimary,
-    fontSize: 16,
+  dividerText: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  switchText: {
+    ...typography.callout,
+    color: colors.text.secondary,
+  },
+  switchAction: {
+    ...typography.callout,
+    color: colors.brand.primary,
     fontWeight: '600',
   },
-  toggleButton: {
-    marginTop: 24,
+  // Confirmation screen
+  confirmContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.base,
   },
-  toggleText: {
-    color: theme.colors.primary.light,
-    fontSize: 14,
-  },
-  confirmationBox: {
+  confirmIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.brand.faint,
     alignItems: 'center',
-    paddingTop: 8,
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
-  confirmationTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-    marginBottom: 16,
+  confirmTitle: {
+    ...typography.title2,
+    color: colors.text.primary,
+    textAlign: 'center',
   },
-  confirmationText: {
-    fontSize: 15,
-    color: theme.colors.text.secondary,
+  confirmBody: {
+    ...typography.body,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  confirmEmail: {
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  confirmHint: {
+    ...typography.callout,
+    color: colors.text.tertiary,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 16,
   },
-  confirmationEmail: {
+  backLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.lg,
+  },
+  backLinkText: {
+    ...typography.callout,
+    color: colors.brand.primary,
     fontWeight: '600',
-    color: theme.colors.text.primary,
-  },
-  confirmationHint: {
-    fontSize: 13,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
-    lineHeight: 19,
   },
 });
