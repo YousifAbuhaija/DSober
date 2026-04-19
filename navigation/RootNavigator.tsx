@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { theme } from '../theme';
+import { colors } from '../theme';
 import AuthScreen from '../screens/AuthScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import MainAppScreen from '../screens/MainAppScreen';
@@ -90,9 +90,9 @@ export default function RootNavigator() {
   // Show loading screen while checking auth state or SEP baseline
   if (loading || checkingBaseline) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.primary.main }]}>
-        <Text style={{ fontSize: 48, fontWeight: 'bold', color: theme.colors.text.onPrimary, marginBottom: 20 }}>DSober</Text>
-        <ActivityIndicator size="large" color={theme.colors.secondary.main} />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.brand.primary }]}>
+        <Text style={{ fontSize: 48, fontWeight: 'bold', color: '#fff', marginBottom: 20 }}>DSober</Text>
+        <ActivityIndicator size="large" color={colors.bg.elevated} />
       </View>
     );
   }
@@ -126,6 +126,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: colors.bg.canvas,
   },
 });

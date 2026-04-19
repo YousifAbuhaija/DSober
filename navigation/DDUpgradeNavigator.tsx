@@ -1,6 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { theme } from '../theme';
+import { colors } from '../theme';
 import DriverInfoScreen from '../screens/onboarding/DriverInfoScreen';
 
 export type DDUpgradeStackParamList = {
@@ -15,9 +15,9 @@ export default function DDUpgradeNavigator() {
       screenOptions={{
         presentation: 'modal',
         headerStyle: {
-          backgroundColor: theme.colors.background.primary,
+          backgroundColor: colors.bg.canvas,
         },
-        headerTintColor: theme.colors.text.primary,
+        headerTintColor: colors.text.primary,
         headerTitleStyle: {
           fontWeight: '600',
         },
