@@ -71,114 +71,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize session
   useEffect(() => {
     let realtimeChannel: any = null;
-    
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      // If there's an error getting the session (e.g., invalid refresh token), clear it
-      if (error) {
-        console.error('Error getting session:', error);
-        supabase.auth.signOut(); // Clear invalid session
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-      
-      setSession(session);
-      if (session?.user) {
-        fetchUserProfile(session.user.id).then(setUser);
-        
-        // Set up real-time subscription to user's profile changes
-        // Only listen for specific critical fields to avoid triggering on every onboarding step
-        realtimeChannel = supabase
-          .channel('user-profile-changes')
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'users',
-              filter: `id=eq.${session.user.id}`,
-            },
-            (payload) => {
-              console.log('User profile updated in real-time:', payload);
-              // Only refresh if critical fields changed (dd_status, role, is_dd)
-              // This prevents constant refreshes during onboarding flow
-              const oldRecord = payload.old as any;
-              const newRecord = payload.new as any;
-              
-              const criticalFieldsChanged = 
-                oldRecord?.dd_status !== newRecord?.dd_status ||
-                oldRecord?.role !== newRecord?.role ||
-                oldRecord?.is_dd !== newRecord?.is_dd;
-              
-              if (criticalFieldsChanged) {
-                console.log('Critical field changed, refreshing user profile');
-                fetchUserProfile(session.user.id).then(setUser);
-              }
-            }
-          )
-          .subscribe();
-      }
-      setLoading(false);
-    });
+    let isMounted = true;
+    let lastUserId: string | null = null;
 
-    // Listen for auth changes
+    // IMPORTANT: Do NOT call other supabase functions (await) directly inside
+    // onAuthStateChange. The auth client dispatches events behind a lock and
+    // awaiting another supabase call from the callback will deadlock the
+    // client (queries hang forever). We defer all such work with setTimeout.
+    // See: https://supabase.com/docs/reference/javascript/auth-onauthstatechange
+    const loadProfileAndSubscribe = (userId: string) => {
+      fetchUserProfile(userId).then((profile) => {
+        if (!isMounted) return;
+        setUser(profile);
+      });
+
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+      }
+
+      realtimeChannel = supabase
+        .channel('user-profile-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'users',
+            filter: `id=eq.${userId}`,
+          },
+          (payload) => {
+            console.log('User profile updated in real-time:', payload);
+            const oldRecord = payload.old as any;
+            const newRecord = payload.new as any;
+
+            const criticalFieldsChanged =
+              oldRecord?.dd_status !== newRecord?.dd_status ||
+              oldRecord?.role !== newRecord?.role ||
+              oldRecord?.is_dd !== newRecord?.is_dd;
+
+            if (criticalFieldsChanged) {
+              console.log('Critical field changed, refreshing user profile');
+              fetchUserProfile(userId).then((p) => {
+                if (isMounted) setUser(p);
+              });
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    const teardownRealtime = () => {
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+      }
+    };
+
+    // Listen for auth changes. Supabase fires INITIAL_SESSION on subscribe,
+    // so this single listener handles both startup and subsequent changes.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
+        if (!isMounted) return;
         setSession(session);
-        if (session?.user) {
-          const profile = await fetchUserProfile(session.user.id);
-          setUser(profile);
-          
-          // Set up real-time subscription for new session
-          if (realtimeChannel) {
-            supabase.removeChannel(realtimeChannel);
+
+        const newUserId = session?.user?.id ?? null;
+        if (newUserId) {
+          // Only re-subscribe if the user actually changed to avoid
+          // tearing down the realtime channel on every token refresh.
+          if (newUserId !== lastUserId) {
+            lastUserId = newUserId;
+            // Defer supabase calls out of the auth lock to avoid a deadlock.
+            setTimeout(() => {
+              if (!isMounted) return;
+              loadProfileAndSubscribe(newUserId);
+            }, 0);
           }
-          
-          realtimeChannel = supabase
-            .channel('user-profile-changes')
-            .on(
-              'postgres_changes',
-              {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'users',
-                filter: `id=eq.${session.user.id}`,
-              },
-              (payload) => {
-                console.log('User profile updated in real-time:', payload);
-                // Only refresh if critical fields changed
-                const oldRecord = payload.old as any;
-                const newRecord = payload.new as any;
-                
-                const criticalFieldsChanged = 
-                  oldRecord?.dd_status !== newRecord?.dd_status ||
-                  oldRecord?.role !== newRecord?.role ||
-                  oldRecord?.is_dd !== newRecord?.is_dd;
-                
-                if (criticalFieldsChanged) {
-                  console.log('Critical field changed, refreshing user profile');
-                  fetchUserProfile(session.user.id).then(setUser);
-                }
-              }
-            )
-            .subscribe();
         } else {
+          lastUserId = null;
           setUser(null);
-          if (realtimeChannel) {
-            supabase.removeChannel(realtimeChannel);
-          }
+          teardownRealtime();
         }
+
         setLoading(false);
       }
     );
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
-      if (realtimeChannel) {
-        supabase.removeChannel(realtimeChannel);
-      }
+      teardownRealtime();
     };
   }, []);
 

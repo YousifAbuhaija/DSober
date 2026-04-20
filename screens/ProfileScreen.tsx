@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,6 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { SEPBaseline } from '../types/database.types';
 import Avatar from '../components/ui/Avatar';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import InfoRow from '../components/ui/InfoRow';
@@ -18,6 +17,18 @@ import { colors, spacing, typography, radii } from '../theme';
 
 type NavigationProp = StackNavigationProp<any>;
 
+function SectionLabel({ title }: { title: string }) {
+  return (
+    <View style={styles.sectionLabel}>
+      <Text style={styles.sectionLabelText}>{title}</Text>
+    </View>
+  );
+}
+
+function Divider() {
+  return <View style={styles.divider} />;
+}
+
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, signOut, refreshUser } = useAuth();
@@ -27,7 +38,6 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Edit sheet state
   const [editVisible, setEditVisible] = useState(false);
   const [editMake, setEditMake] = useState('');
   const [editModel, setEditModel] = useState('');
@@ -111,77 +121,116 @@ export default function ProfileScreen() {
 
   return (
     <>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
-          <Avatar uri={user.profilePhotoUrl} name={user.name} size={80} />
-          <Text style={styles.name}>{user.name}</Text>
-          <Text style={styles.email}>{user.email}</Text>
-          <View style={styles.pillRow}>
-            <StatusPill status={user.role === 'admin' ? 'admin' as any : 'member' as any} label={user.role === 'admin' ? 'Admin' : 'Member'} />
-            {ddStatusPill && (
-              <StatusPill status={ddStatusPill as any} label={ddStatusPill === 'revoked' ? 'DD Revoked' : 'Active DD'} />
-            )}
+          <View style={styles.headerTop}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.name}>{user.name}</Text>
+              <Text style={styles.email}>{user.email}</Text>
+              <View style={styles.pillRow}>
+                <StatusPill
+                  status={user.role === 'admin' ? 'admin' as any : 'member' as any}
+                  label={user.role === 'admin' ? 'Admin' : 'Member'}
+                />
+                {ddStatusPill && (
+                  <StatusPill
+                    status={ddStatusPill as any}
+                    label={ddStatusPill === 'revoked' ? 'DD Revoked' : 'Active DD'}
+                  />
+                )}
+              </View>
+            </View>
+            <Avatar uri={user.profilePhotoUrl} name={user.name} size={64} />
           </View>
         </View>
 
         {/* Account */}
-        <Card elevated style={styles.card}>
-          <Text style={styles.cardTitle}>Account</Text>
-          {groupName ? <InfoRow label="Chapter" value={groupName} /> : null}
-          <InfoRow label="Age" value={String(user.age)} />
-          <InfoRow label="Gender" value={user.gender ?? '—'} />
-        </Card>
+        <SectionLabel title="Account" />
+        <View style={styles.section}>
+          {groupName ? (
+            <>
+              <InfoRow icon="people-outline" label="Chapter" value={groupName} />
+              <Divider />
+            </>
+          ) : null}
+          <InfoRow icon="calendar-outline" label="Age" value={String(user.age)} />
+          <Divider />
+          <InfoRow icon="person-outline" label="Gender" value={user.gender ?? '—'} />
+        </View>
 
-        {/* DD Info */}
+        {/* Driver Info */}
         {user.isDD && (
-          <Card elevated style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <Text style={styles.cardTitle}>Driver Info</Text>
-              <Button variant="ghost" label="Edit" size="sm" onPress={openEdit} />
+          <>
+            <View style={styles.sectionLabelRow}>
+              <Text style={styles.sectionLabelText}>Driver Info</Text>
+              <TouchableOpacity onPress={openEdit} style={styles.editBtn}>
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
             </View>
-            {user.carMake && user.carModel ? (
-              <InfoRow label="Vehicle" value={`${user.carMake} ${user.carModel}`} />
-            ) : null}
-            {user.carPlate ? (
-              <InfoRow label="Plate" value={user.carPlate} />
-            ) : null}
-          </Card>
+            <View style={styles.section}>
+              {user.carMake && user.carModel ? (
+                <>
+                  <InfoRow icon="car-outline" label="Vehicle" value={`${user.carMake} ${user.carModel}`} />
+                  <Divider />
+                </>
+              ) : null}
+              {user.carPlate ? (
+                <InfoRow icon="card-outline" label="License Plate" value={user.carPlate} />
+              ) : null}
+            </View>
+          </>
         )}
 
         {/* SEP Baseline */}
         {sepBaseline && (
-          <Card elevated style={styles.card}>
-            <Text style={styles.cardTitle}>SEP Baseline</Text>
-            <Text style={styles.cardSub}>Measurements from your onboarding session</Text>
-            <InfoRow label="Reaction Time" value={`${sepBaseline.reactionAvgMs} ms`} />
-            <InfoRow label="Phrase Duration" value={`${sepBaseline.phraseDurationSec.toFixed(2)} s`} />
-          </Card>
+          <>
+            <SectionLabel title="SEP Baseline" />
+            <View style={styles.section}>
+              <InfoRow
+                icon="flash-outline"
+                label="Reaction Time"
+                subtitle="Measured during onboarding"
+                value={`${sepBaseline.reactionAvgMs} ms`}
+              />
+              <Divider />
+              <InfoRow
+                icon="mic-outline"
+                label="Phrase Duration"
+                value={`${sepBaseline.phraseDurationSec.toFixed(2)} s`}
+              />
+            </View>
+          </>
         )}
 
         {/* Settings */}
-        <Card elevated style={styles.card}>
+        <SectionLabel title="Settings" />
+        <View style={styles.section}>
           <InfoRow
+            icon="notifications-outline"
             label="Notification Settings"
-            value=""
             onPress={() => navigation.navigate('NotificationPreferences')}
           />
-        </Card>
+        </View>
 
         {/* Logout */}
-        <Button
-          variant="danger"
-          label="Log Out"
+        <TouchableOpacity
+          style={styles.logoutRow}
           onPress={handleLogout}
-          loading={loggingOut}
-          fullWidth
-          style={styles.logoutBtn}
-        />
+          disabled={loggingOut}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="log-out-outline" size={20} color={colors.ui.error} style={styles.logoutIcon} />
+          <Text style={styles.logoutText}>{loggingOut ? 'Logging out…' : 'Log Out'}</Text>
+        </TouchableOpacity>
 
         <Text style={styles.version}>DSober v1.0.0</Text>
       </ScrollView>
 
-      {/* Edit Driver Info Sheet */}
       <SheetModal visible={editVisible} onClose={() => setEditVisible(false)} title="Edit Driver Info">
         <Input label="Car Make" value={editMake} onChangeText={setEditMake} placeholder="e.g. Toyota" />
         <Input label="Car Model" value={editModel} onChangeText={setEditModel} placeholder="e.g. Camry" style={styles.inputGap} />
@@ -204,27 +253,121 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.canvas },
-  content: { padding: spacing.xl, paddingBottom: spacing['3xl'] },
-  header: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    marginBottom: spacing.xl,
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg.canvas,
   },
-  name: { ...typography.title2, color: colors.text.primary, marginTop: spacing.md },
-  email: { ...typography.callout, color: colors.text.secondary, marginTop: spacing.xs, marginBottom: spacing.md },
-  pillRow: { flexDirection: 'row', gap: spacing.sm },
-  card: { marginBottom: spacing.md },
-  cardTitle: { ...typography.bodyBold, color: colors.text.primary, marginBottom: spacing.md },
-  cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  cardSub: { ...typography.caption, color: colors.text.tertiary, marginTop: -spacing.sm, marginBottom: spacing.md },
-  logoutBtn: { marginTop: spacing.md },
+  content: {
+    paddingBottom: 48,
+  },
+
+  // Header
+  header: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+    marginBottom: spacing.lg,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flex: 1,
+    marginRight: spacing.base,
+  },
+  name: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.text.primary,
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  email: {
+    ...typography.callout,
+    color: colors.text.secondary,
+    marginBottom: spacing.md,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+
+  // Sections
+  sectionLabel: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  sectionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  sectionLabelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  editBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  editBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.brand.primary,
+  },
+  section: {
+    backgroundColor: colors.bg.surface,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border.subtle,
+    marginLeft: 16 + 32 + 12, // paddingLeft + iconWrap width + iconWrap marginRight
+  },
+
+  // Logout
+  logoutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: spacing.base,
+    marginTop: spacing.lg,
+    backgroundColor: colors.bg.surface,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  logoutIcon: {
+    marginRight: spacing.md + 4,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.ui.error,
+  },
+
   version: {
     ...typography.caption,
     color: colors.text.tertiary,
     textAlign: 'center',
     marginTop: spacing.xl,
   },
+
+  // Sheet
   inputGap: { marginTop: spacing.md },
   sheetActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl },
   halfBtn: { flex: 1 },

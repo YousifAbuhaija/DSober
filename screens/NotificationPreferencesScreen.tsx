@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { colors, spacing, typography, radii } from '../theme';
+import { colors, spacing, typography } from '../theme';
 
 interface NotificationPreferences {
   rideRequests: boolean;
@@ -26,51 +27,78 @@ interface PreferenceItem {
   key: keyof NotificationPreferences;
   label: string;
   description: string;
+  icon: keyof typeof Ionicons.glyphMap;
   critical?: boolean;
   criticalFor?: 'dd' | 'admin' | 'both';
 }
 
-const PREFERENCE_ITEMS: PreferenceItem[] = [
+const PREFERENCE_GROUPS: { title: string; items: PreferenceItem[] }[] = [
   {
-    key: 'rideRequests',
-    label: 'Ride Requests',
-    description: 'Get notified when someone requests a ride from you',
+    title: 'Rides',
+    items: [
+      {
+        key: 'rideRequests',
+        label: 'Ride Requests',
+        description: 'When someone requests a ride from you',
+        icon: 'car-outline',
+      },
+      {
+        key: 'rideStatusUpdates',
+        label: 'Ride Status Updates',
+        description: 'Changes to your active ride status',
+        icon: 'navigate-outline',
+      },
+    ],
   },
   {
-    key: 'rideStatusUpdates',
-    label: 'Ride Status Updates',
-    description: 'Get notified about your ride status changes',
+    title: 'Events & DD',
+    items: [
+      {
+        key: 'eventUpdates',
+        label: 'Event Updates',
+        description: 'Event status changes and DD assignments',
+        icon: 'calendar-outline',
+      },
+      {
+        key: 'ddRequestUpdates',
+        label: 'DD Request Updates',
+        description: 'Status updates on your DD requests',
+        icon: 'person-outline',
+      },
+      {
+        key: 'ddSessionReminders',
+        label: 'Session Reminders',
+        description: 'Reminders during active DD sessions',
+        icon: 'alarm-outline',
+      },
+    ],
   },
   {
-    key: 'eventUpdates',
-    label: 'Event Updates',
-    description: 'Get notified about event status changes and DD assignments',
-  },
-  {
-    key: 'ddRequestUpdates',
-    label: 'DD Request Updates',
-    description: 'Get notified about your DD request status',
-  },
-  {
-    key: 'ddSessionReminders',
-    label: 'DD Session Reminders',
-    description: 'Get reminders during active DD sessions',
-  },
-  {
-    key: 'sepFailureAlerts',
-    label: 'SEP Failure Alerts',
-    description: 'Critical safety alerts when DDs fail sobriety checks',
-    critical: true,
-    criticalFor: 'both',
-  },
-  {
-    key: 'ddRevocationAlerts',
-    label: 'DD Revocation Alerts',
-    description: 'Critical alerts when your DD status is revoked',
-    critical: true,
-    criticalFor: 'dd',
+    title: 'Safety',
+    items: [
+      {
+        key: 'sepFailureAlerts',
+        label: 'SEP Failure Alerts',
+        description: 'Critical alerts when a DD fails sobriety checks',
+        icon: 'warning-outline',
+        critical: true,
+        criticalFor: 'both',
+      },
+      {
+        key: 'ddRevocationAlerts',
+        label: 'DD Revocation Alerts',
+        description: 'Alerts when your DD status is revoked',
+        icon: 'shield-outline',
+        critical: true,
+        criticalFor: 'dd',
+      },
+    ],
   },
 ];
+
+function Divider() {
+  return <View style={styles.divider} />;
+}
 
 export default function NotificationPreferencesScreen() {
   const { user } = useAuth();
@@ -78,14 +106,12 @@ export default function NotificationPreferencesScreen() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
-  // Fetch user's current notification preferences
   useEffect(() => {
     fetchPreferences();
   }, [user?.id]);
 
   const fetchPreferences = async () => {
     if (!user?.id) return;
-
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -110,92 +136,52 @@ export default function NotificationPreferencesScreen() {
           ddRevocationAlerts: data.dd_revocation_alerts,
         });
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to load notification preferences');
     } finally {
       setLoading(false);
     }
   };
 
-  const updatePreferences = async (key: keyof NotificationPreferences, value: boolean) => {
+  const isDisabled = (item: PreferenceItem): boolean => {
+    if (!item.critical || !user) return false;
+    const isDD = user.isDD;
+    const isAdmin = user.role === 'admin';
+    if (item.criticalFor === 'both') return isDD || isAdmin;
+    if (item.criticalFor === 'dd') return isDD;
+    if (item.criticalFor === 'admin') return isAdmin;
+    return false;
+  };
+
+  const updatePreference = async (key: keyof NotificationPreferences, value: boolean) => {
     if (!user?.id || !preferences) return;
 
-    // Check if this is a critical notification that cannot be disabled
-    const item = PREFERENCE_ITEMS.find(p => p.key === key);
-    if (item?.critical) {
-      const isDD = user.isDD;
-      const isAdmin = user.role === 'admin';
-      
-      if (item.criticalFor === 'both' && (isDD || isAdmin)) {
-        if (!value) {
-          Alert.alert(
-            'Cannot Disable',
-            'This is a critical safety notification that cannot be disabled for DDs and admins.'
-          );
-          return;
-        }
-      } else if (item.criticalFor === 'dd' && isDD) {
-        if (!value) {
-          Alert.alert(
-            'Cannot Disable',
-            'This is a critical notification that cannot be disabled for DDs.'
-          );
-          return;
-        }
-      } else if (item.criticalFor === 'admin' && isAdmin) {
-        if (!value) {
-          Alert.alert(
-            'Cannot Disable',
-            'This is a critical notification that cannot be disabled for admins.'
-          );
-          return;
-        }
-      }
+    const item = PREFERENCE_GROUPS.flatMap(g => g.items).find(p => p.key === key);
+    if (item && isDisabled(item) && !value) {
+      Alert.alert('Cannot Disable', 'This is a critical safety notification required for your role.');
+      return;
     }
 
-    // Optimistically update UI
-    const updatedPreferences = { ...preferences, [key]: value };
-    setPreferences(updatedPreferences);
-
+    const prev = preferences;
+    setPreferences({ ...preferences, [key]: value });
     setUpdating(true);
     try {
-      // Convert camelCase to snake_case for database
       const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-      
       const { error } = await supabase
         .from('notification_preferences')
         .update({ [dbKey]: value })
         .eq('user_id', user.id);
 
       if (error) {
-        // Revert optimistic update
-        setPreferences(preferences);
-        Alert.alert('Error', 'Failed to update notification preferences');
+        setPreferences(prev);
+        Alert.alert('Error', 'Failed to update preferences');
       }
-    } catch (error) {
-      // Revert optimistic update
-      setPreferences(preferences);
-      Alert.alert('Error', 'Failed to update notification preferences');
+    } catch {
+      setPreferences(prev);
+      Alert.alert('Error', 'Failed to update preferences');
     } finally {
       setUpdating(false);
     }
-  };
-
-  const isPreferenceDisabled = (item: PreferenceItem): boolean => {
-    if (!item.critical || !user) return false;
-
-    const isDD = user.isDD;
-    const isAdmin = user.role === 'admin';
-
-    if (item.criticalFor === 'both') {
-      return isDD || isAdmin;
-    } else if (item.criticalFor === 'dd') {
-      return isDD;
-    } else if (item.criticalFor === 'admin') {
-      return isAdmin;
-    }
-
-    return false;
   };
 
   if (loading || !preferences) {
@@ -207,67 +193,63 @@ export default function NotificationPreferencesScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notification Settings</Text>
-        <Text style={styles.headerDescription}>
-          Manage which notifications you receive. Critical safety notifications cannot be disabled.
-        </Text>
-      </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <Text style={styles.headerDescription}>
+        Critical safety notifications cannot be disabled.
+      </Text>
 
-      <View style={styles.section}>
-        {PREFERENCE_ITEMS.map((item) => {
-          const disabled = isPreferenceDisabled(item);
-          const value = preferences[item.key];
+      {PREFERENCE_GROUPS.map((group) => (
+        <View key={group.title}>
+          <View style={styles.sectionLabel}>
+            <Text style={styles.sectionLabelText}>{group.title}</Text>
+          </View>
 
-          return (
-            <View key={item.key} style={styles.preferenceItem}>
-              <View style={styles.preferenceInfo}>
-                <View style={styles.labelContainer}>
-                  <Text style={[
-                    styles.preferenceLabel,
-                    disabled && styles.disabledLabel
-                  ]}>
-                    {item.label}
-                  </Text>
-                  {item.critical && (
-                    <View style={styles.criticalBadge}>
-                      <Text style={styles.criticalBadgeText}>Critical</Text>
+          <View style={styles.section}>
+            {group.items.map((item, index) => {
+              const disabled = isDisabled(item);
+              const value = preferences[item.key];
+              const isLast = index === group.items.length - 1;
+
+              return (
+                <View key={item.key}>
+                  <View style={styles.row}>
+                    <View style={styles.iconWrap}>
+                      <Ionicons
+                        name={item.icon}
+                        size={20}
+                        color={disabled ? colors.text.tertiary : colors.text.secondary}
+                      />
                     </View>
-                  )}
+                    <View style={styles.labelWrap}>
+                      <View style={styles.labelRow}>
+                        <Text style={[styles.label, disabled && styles.labelDisabled]}>
+                          {item.label}
+                        </Text>
+                        {item.critical && (
+                          <View style={styles.criticalBadge}>
+                            <Text style={styles.criticalBadgeText}>Required</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.description, disabled && styles.descriptionDisabled]}>
+                        {item.description}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={value}
+                      onValueChange={(v) => updatePreference(item.key, v)}
+                      disabled={disabled || updating}
+                      trackColor={{ false: colors.bg.muted, true: colors.brand.primary }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+                  {!isLast && <Divider />}
                 </View>
-                <Text style={[
-                  styles.preferenceDescription,
-                  disabled && styles.disabledDescription
-                ]}>
-                  {item.description}
-                </Text>
-                {disabled && (
-                  <Text style={styles.disabledNote}>
-                    Required for your role
-                  </Text>
-                )}
-              </View>
-              <Switch
-                value={value}
-                onValueChange={(newValue) => updatePreferences(item.key, newValue)}
-                disabled={disabled || updating}
-                trackColor={{
-                  false: colors.bg.muted,
-                  true: colors.brand.primary,
-                }}
-                thumbColor={value ? colors.brand.primary : colors.bg.surface}
-              />
-            </View>
-          );
-        })}
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          💡 You can change these settings at any time from your profile.
-        </Text>
-      </View>
+              );
+            })}
+          </View>
+        </View>
+      ))}
     </ScrollView>
   );
 }
@@ -278,7 +260,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.canvas,
   },
   content: {
-    padding: 16,
+    paddingBottom: 48,
   },
   loadingContainer: {
     flex: 1,
@@ -286,92 +268,88 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.bg.canvas,
   },
-  header: {
-    marginBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text.primary,
-    marginBottom: 8,
-  },
   headerDescription: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    lineHeight: 22,
+    fontSize: 14,
+    color: colors.text.tertiary,
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  sectionLabel: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  sectionLabelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   section: {
     backgroundColor: colors.bg.surface,
-    borderRadius: 12,
-    padding: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  preferenceItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
+    borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border.default,
+    borderColor: colors.border.subtle,
   },
-  preferenceInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  labelContainer: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.base,
+    minHeight: 60,
   },
-  preferenceLabel: {
+  iconWrap: {
+    width: 32,
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  labelWrap: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: 2,
+  },
+  label: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text.primary,
-    marginRight: 8,
   },
-  disabledLabel: {
+  labelDisabled: {
     color: colors.text.secondary,
   },
+  description: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  descriptionDisabled: {
+    color: colors.text.tertiary,
+  },
   criticalBadge: {
-    backgroundColor: colors.ui.error,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    backgroundColor: `${colors.ui.error}22`,
+    borderWidth: 1,
+    borderColor: `${colors.ui.error}55`,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
     borderRadius: 4,
   },
   criticalBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.ui.error,
     textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
-  preferenceDescription: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    lineHeight: 20,
-  },
-  disabledDescription: {
-    color: colors.text.tertiary,
-  },
-  disabledNote: {
-    fontSize: 12,
-    color: colors.ui.info,
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  footer: {
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: colors.bg.surface,
-    borderRadius: 12,
-  },
-  footerText: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    lineHeight: 20,
-    textAlign: 'center',
+  divider: {
+    height: 1,
+    backgroundColor: colors.border.subtle,
+    marginLeft: spacing.base + 32 + spacing.md,
   },
 });
