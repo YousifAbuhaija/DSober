@@ -9,8 +9,8 @@ import {
   RefreshControl,
   Linking,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import { StackNavigationProp, RouteProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,6 +25,7 @@ import LoadingScreen from '../components/ui/LoadingScreen';
 import { colors, spacing, typography, radii } from '../theme';
 
 type NavigationProp = StackNavigationProp<any>;
+type RouteParams = { initialEventId?: string };
 
 interface ActiveDD {
   userId: string;
@@ -40,9 +41,11 @@ interface ActiveDD {
 
 export default function DDsListScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+  const initialEventId = route.params?.initialEventId ?? '';
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState('');
+  const [selectedEventId, setSelectedEventId] = useState(initialEventId);
   const [activeDDs, setActiveDDs] = useState<ActiveDD[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,7 +108,10 @@ export default function DDsListScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { loadAll(); }, [user?.groupId]));
+  useFocusEffect(useCallback(() => {
+    if (initialEventId) setSelectedEventId(initialEventId);
+    loadAll();
+  }, [user?.groupId, initialEventId]));
 
   useFocusEffect(useCallback(() => {
     if (selectedEventId) loadDDs(selectedEventId);
@@ -249,7 +255,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
-    backgroundColor: '#1A1400',
+    backgroundColor: `${colors.ui.warning}15`,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.subtle,
   },

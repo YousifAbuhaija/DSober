@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { RideRequest, User, Event } from '../types/database.types';
 import { colors, spacing, typography, radii } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 interface RideRequestWithDetails extends RideRequest {
   riderName: string;
@@ -393,11 +394,11 @@ export default function AdminRideLogScreen() {
         <Text style={styles.statLabel}>Total Rides</Text>
       </View>
       <View style={styles.statCard}>
-        <Text style={[styles.statValue, { color: '#007AFF' }]}>{stats.activeRides}</Text>
+        <Text style={[styles.statValue, { color: colors.ui.info }]}>{stats.activeRides}</Text>
         <Text style={styles.statLabel}>Active</Text>
       </View>
       <View style={styles.statCard}>
-        <Text style={[styles.statValue, { color: '#34C759' }]}>{stats.completedRides}</Text>
+        <Text style={[styles.statValue, { color: colors.ui.success }]}>{stats.completedRides}</Text>
         <Text style={styles.statLabel}>Completed</Text>
       </View>
       <View style={styles.statCard}>
@@ -628,7 +629,7 @@ export default function AdminRideLogScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>📋</Text>
+      <Ionicons name="receipt-outline" size={48} color={colors.text.tertiary} style={{ marginBottom: spacing.md }} />
       <Text style={styles.emptyText}>No Ride Activity</Text>
       <Text style={styles.emptySubtext}>
         {filters.dateRange !== 'all' || filters.status !== 'all' || filters.eventId
@@ -665,9 +666,11 @@ export default function AdminRideLogScreen() {
           style={styles.filterToggle}
           onPress={() => setShowFilters(!showFilters)}
         >
-          <Text style={styles.filterToggleText}>
-            {showFilters ? '✕ Hide Filters' : '⚙️ Filters'}
-          </Text>
+          <Ionicons
+            name={showFilters ? 'close-outline' : 'options-outline'}
+            size={18}
+            color={colors.text.secondary}
+          />
         </TouchableOpacity>
       </View>
 

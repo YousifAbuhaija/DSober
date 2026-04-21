@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
@@ -16,13 +16,17 @@ import { Event } from '../types/database.types';
 import { updateEventStatusesToActive } from '../utils/eventStatus';
 import { mapEvent } from '../utils/mappers';
 import { useAsync } from '../hooks/useAsync';
-import Card from '../components/ui/Card';
-import StatusPill from '../components/ui/StatusPill';
 import EmptyState from '../components/ui/EmptyState';
 import LoadingScreen from '../components/ui/LoadingScreen';
-import { colors, spacing, typography, radii, shadow } from '../theme';
+import { colors, spacing, typography } from '../theme';
 
 type NavigationProp = StackNavigationProp<any>;
+
+const STATUS_CONFIG = {
+  active:    { icon: 'flash' as const,        color: colors.ui.success,   label: 'Active' },
+  upcoming:  { icon: 'calendar-outline' as const, color: colors.brand.primary, label: 'Upcoming' },
+  completed: { icon: 'checkmark-circle-outline' as const, color: colors.text.tertiary, label: 'Completed' },
+};
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -54,21 +58,36 @@ export default function EventsListScreen() {
 
   const eventList = events ?? [];
 
+  const sections = [
+    { title: 'Active',    data: eventList.filter(e => e.status === 'active') },
+    { title: 'Upcoming',  data: eventList.filter(e => e.status === 'upcoming') },
+    { title: 'Completed', data: eventList.filter(e => e.status === 'completed') },
+  ].filter(s => s.data.length > 0);
+
   return (
     <View style={styles.container}>
-      <FlatList
-        data={eventList}
-        renderItem={({ item }) => <EventCard event={item} onPress={() => navigation.navigate('EventDetail', { eventId: item.id })} />}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={eventList.length === 0 ? styles.emptyList : styles.list}
-        showsVerticalScrollIndicator={false}
+        renderItem={({ item, index, section }) => {
+          const isLast = index === section.data.length - 1;
+          return <EventRow event={item} isLast={isLast} onPress={() => navigation.navigate('EventDetail', { eventId: item.id })} />;
+        }}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionLabel}>
+            <Text style={styles.sectionLabelText}>{section.title.toUpperCase()}</Text>
+          </View>
+        )}
         ListEmptyComponent={
           <EmptyState
             icon="calendar-outline"
             title="No events yet"
-            subtitle={user?.role === 'admin' ? 'Tap the + button to create your first event.' : 'Your chapter hasn\'t posted any events yet.'}
+            subtitle={user?.role === 'admin' ? 'Tap + to create your first event.' : 'Your chapter hasn\'t posted any events yet.'}
           />
         }
+        contentContainerStyle={eventList.length === 0 ? styles.emptyList : styles.list}
+        stickySectionHeadersEnabled={false}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={loading && !!events}
@@ -91,85 +110,110 @@ export default function EventsListScreen() {
   );
 }
 
-function EventCard({ event, onPress }: { event: Event; onPress: () => void }) {
+function EventRow({ event, isLast, onPress }: { event: Event; isLast: boolean; onPress: () => void }) {
+  const cfg = STATUS_CONFIG[event.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.upcoming;
   const isCompleted = event.status === 'completed';
 
   return (
-    <Card style={[styles.card, isCompleted && styles.cardDimmed]} onPress={onPress} elevated>
-      <View style={styles.cardHeader}>
-        <Text style={[styles.eventName, isCompleted && styles.textDimmed]} numberOfLines={1}>
-          {event.name}
+    <TouchableOpacity
+      style={[styles.row, isCompleted && styles.rowDimmed]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.iconCircle, { backgroundColor: `${cfg.color}18` }]}>
+        <Ionicons name={cfg.icon} size={20} color={cfg.color} />
+      </View>
+
+      <View style={styles.rowContent}>
+        <Text style={styles.eventName} numberOfLines={1}>{event.name}</Text>
+        <Text style={styles.metaText}>
+          {formatDate(event.dateTime)}  ·  {formatTime(event.dateTime)}
         </Text>
-        <StatusPill status={event.status as any} />
-      </View>
-
-      <View style={styles.metaRow}>
-        <Ionicons name="calendar-outline" size={14} color={colors.text.tertiary} />
-        <Text style={styles.metaText}>{formatDate(event.dateTime)}</Text>
-        <Text style={styles.metaDot}>·</Text>
-        <Ionicons name="time-outline" size={14} color={colors.text.tertiary} />
-        <Text style={styles.metaText}>{formatTime(event.dateTime)}</Text>
-      </View>
-
-      {event.locationText ? (
-        <View style={styles.metaRow}>
-          <Ionicons name="location-outline" size={14} color={colors.text.tertiary} />
+        {event.locationText ? (
           <Text style={styles.metaText} numberOfLines={1}>{event.locationText}</Text>
-        </View>
-      ) : null}
-
-      {event.description ? (
-        <Text style={styles.description} numberOfLines={2}>{event.description}</Text>
-      ) : null}
-
-      <View style={styles.chevronRow}>
-        <Text style={styles.viewDetail}>View details</Text>
-        <Ionicons name="chevron-forward" size={14} color={colors.brand.primary} />
+        ) : null}
       </View>
-    </Card>
+
+      <View style={styles.rowRight}>
+        <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
+        <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+      </View>
+
+      {!isLast && <View style={styles.divider} />}
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },
-  list: { padding: spacing.xl, paddingBottom: spacing['3xl'] },
-  emptyList: { flex: 1, padding: spacing.xl },
-  card: { marginBottom: spacing.md },
-  cardDimmed: { opacity: 0.55 },
-  cardHeader: {
+  list: { paddingBottom: 80 },
+  emptyList: { flex: 1 },
+
+  sectionLabel: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  sectionLabelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+
+  // Rows
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.base,
+    backgroundColor: colors.bg.surface,
+  },
+  rowDimmed: { opacity: 0.5 },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+    flexShrink: 0,
+  },
+  rowContent: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  rowRight: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 6,
   },
   eventName: {
-    ...typography.bodyBold,
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.text.primary,
-    flex: 1,
+    marginBottom: 3,
   },
-  textDimmed: { color: colors.text.tertiary },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  metaText: { ...typography.caption, color: colors.text.tertiary },
-  metaDot: { ...typography.caption, color: colors.border.default },
-  description: {
-    ...typography.callout,
+  metaText: {
+    fontSize: 13,
     color: colors.text.secondary,
-    lineHeight: 20,
-    marginTop: spacing.xs,
+    lineHeight: 18,
   },
-  chevronRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
+  divider: {
+    position: 'absolute',
+    bottom: 0,
+    left: spacing.base + 44 + spacing.md,
+    right: 0,
+    height: 1,
+    backgroundColor: colors.border.subtle,
   },
-  viewDetail: { ...typography.caption, color: colors.brand.primary, fontWeight: '600' },
+
   fab: {
     position: 'absolute',
     right: spacing.xl,
@@ -180,6 +224,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadow.lg,
+    shadowColor: colors.brand.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });

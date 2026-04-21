@@ -109,7 +109,7 @@ export default function SEPResultScreen() {
     );
   }
 
-  const passBg  = result.pass ? '#0A2010' : '#2A0A0A';
+  const passBg  = result.pass ? `${colors.ui.success}22` : `${colors.ui.error}22`;
   const passAccent = result.pass ? colors.ui.success : colors.ui.error;
 
   const metrics = [

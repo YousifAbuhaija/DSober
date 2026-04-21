@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
     borderRadius: radii.full,
-    backgroundColor: '#0A2010',
+    backgroundColor: `${colors.ui.success}15`,
     borderWidth: 1,
     borderColor: colors.ui.success,
     marginBottom: spacing.xl,

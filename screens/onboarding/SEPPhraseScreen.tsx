@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.bg.surface,
   },
-  recordBtnActive: { borderColor: colors.ui.error, backgroundColor: '#2A0A0A' },
+  recordBtnActive: { borderColor: colors.ui.error, backgroundColor: `${colors.ui.error}22` },
   recordDot: {
     width: 52,
     height: 52,

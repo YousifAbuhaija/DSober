@@ -23,10 +23,10 @@ const MAX_DELAY = 3000;
 
 const BG: Record<TrialState, string> = {
   waiting: colors.bg.canvas,
-  ready:   '#1A1600',
-  go:      '#0A2010',
+  ready:   `${colors.ui.warning}22`,
+  go:      `${colors.ui.success}22`,
   tapped:  colors.bg.canvas,
-  early:   '#2A0A0A',
+  early:   `${colors.ui.error}22`,
 };
 
 const LABEL: Record<TrialState, string> = {

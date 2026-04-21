@@ -7,34 +7,29 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Modal,
   FlatList,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Event, DDAssignment, DDRequest, User } from '../types/database.types';
 import { markEventAsCompleted } from '../utils/eventStatus';
 import { colors, spacing, typography, radii } from '../theme';
+import Avatar from '../components/ui/Avatar';
+import StatusPill from '../components/ui/StatusPill';
+import Button from '../components/ui/Button';
+import SheetModal from '../components/ui/SheetModal';
+import LoadingScreen from '../components/ui/LoadingScreen';
 
 type EventsStackParamList = {
   EventsList: undefined;
   EventDetail: { eventId: string };
   CreateEvent: undefined;
   SEPReaction: { mode: 'baseline' | 'attempt'; eventId?: string };
-  SEPPhrase: {
-    mode: 'baseline' | 'attempt';
-    reactionAvgMs: number;
-    eventId?: string;
-  };
-  SEPSelfie: {
-    mode: 'baseline' | 'attempt';
-    reactionAvgMs: number;
-    phraseDurationSec: number;
-    audioUrl: string;
-    eventId?: string;
-  };
+  SEPPhrase: { mode: 'baseline' | 'attempt'; reactionAvgMs: number; eventId?: string };
+  SEPSelfie: { mode: 'baseline' | 'attempt'; reactionAvgMs: number; phraseDurationSec: number; audioUrl: string; eventId?: string };
   DDActiveSession: { eventId: string };
 };
 
@@ -46,10 +41,22 @@ interface DDAssignmentWithUser extends DDAssignment {
   userEmail: string;
 }
 
+function SectionLabel({ title }: { title: string }) {
+  return (
+    <View style={styles.sectionLabel}>
+      <Text style={styles.sectionLabelText}>{title}</Text>
+    </View>
+  );
+}
+
+function Divider() {
+  return <View style={styles.divider} />;
+}
+
 export default function EventDetailScreen() {
   const route = useRoute<EventDetailRouteProp>();
   const navigation = useNavigation<NavigationProp>();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const { eventId } = route.params;
 
   const [event, setEvent] = useState<Event | null>(null);
@@ -65,45 +72,27 @@ export default function EventDetailScreen() {
   const [activeSession, setActiveSession] = useState<any>(null);
   const [markingCompleted, setMarkingCompleted] = useState(false);
 
-  useEffect(() => {
-    fetchEventDetails();
-  }, [eventId]);
+  useEffect(() => { fetchEventDetails(); }, [eventId]);
 
-  // Refresh data when screen comes into focus (e.g., after SEP verification)
-  // Fetch event details when screen comes into focus
-  // Note: We don't need to call refreshUser() here because AuthContext
-  // has a real-time subscription that automatically updates user data
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchEventDetails();
-    }, [eventId])
-  );
+  useFocusEffect(React.useCallback(() => { fetchEventDetails(); }, [eventId]));
 
   const fetchEventDetails = async () => {
     try {
-      
-      // Validate eventId before making any queries
       if (!eventId || eventId === '') {
-        Alert.alert('Error', 'Invalid event ID. Please try again.');
+        Alert.alert('Error', 'Invalid event ID.');
         navigation.goBack();
         return;
       }
-      
-      // Reset user-specific state before fetching
+
       setUserDDRequest(null);
       setUserDDAssignment(null);
       setActiveSession(null);
 
-      // Fetch event
       const { data: eventData, error: eventError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('id', eventId)
-        .single();
-
+        .from('events').select('*').eq('id', eventId).single();
       if (eventError) throw eventError;
 
-      const mappedEvent: Event = {
+      setEvent({
         id: eventData.id,
         groupId: eventData.group_id,
         name: eventData.name,
@@ -113,80 +102,41 @@ export default function EventDetailScreen() {
         status: eventData.status,
         createdByUserId: eventData.created_by_user_id,
         createdAt: new Date(eventData.created_at),
-      };
+      });
 
-      setEvent(mappedEvent);
-
-      // Fetch DD assignments with user info
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('dd_assignments')
-        .select(`
-          *,
-          users!dd_assignments_user_id_fkey (
-            name,
-            email
-          )
-        `)
+        .select('*, users!dd_assignments_user_id_fkey (name, email)')
         .eq('event_id', eventId);
-
       if (assignmentsError) throw assignmentsError;
 
-      const mappedAssignments: DDAssignmentWithUser[] = (assignmentsData || []).map((assignment) => ({
-        id: assignment.id,
-        eventId: assignment.event_id,
-        userId: assignment.user_id,
-        status: assignment.status,
-        updatedAt: new Date(assignment.updated_at),
-        userName: assignment.users?.name || 'Unknown',
-        userEmail: assignment.users?.email || '',
+      const mappedAssignments: DDAssignmentWithUser[] = (assignmentsData || []).map((a) => ({
+        id: a.id, eventId: a.event_id, userId: a.user_id,
+        status: a.status, updatedAt: new Date(a.updated_at),
+        userName: a.users?.name || 'Unknown', userEmail: a.users?.email || '',
       }));
-
       setDDAssignments(mappedAssignments);
 
-      // Check if current user has a DD request (only pending or approved, not rejected)
       if (user?.id) {
         const { data: requestData } = await supabase
-          .from('dd_requests')
-          .select('*')
-          .eq('event_id', eventId)
-          .eq('user_id', user.id)
+          .from('dd_requests').select('*')
+          .eq('event_id', eventId).eq('user_id', user.id)
           .in('status', ['pending', 'approved'])
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
+          .order('created_at', { ascending: false }).limit(1).single();
         if (requestData) {
-          setUserDDRequest({
-            id: requestData.id,
-            eventId: requestData.event_id,
-            userId: requestData.user_id,
-            status: requestData.status,
-            createdAt: new Date(requestData.created_at),
-          });
+          setUserDDRequest({ id: requestData.id, eventId: requestData.event_id, userId: requestData.user_id, status: requestData.status, createdAt: new Date(requestData.created_at) });
         }
 
-        // Check if current user has a DD assignment
         const userAssignment = mappedAssignments.find((a) => a.userId === user.id);
-        if (userAssignment) {
-          setUserDDAssignment(userAssignment);
-        }
+        if (userAssignment) setUserDDAssignment(userAssignment);
 
-        // Check if current user has an active DD session
         const { data: sessionData } = await supabase
-          .from('dd_sessions')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('event_id', eventId)
-          .eq('is_active', true)
-          .order('started_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (sessionData) {
-          setActiveSession(sessionData);
-        }
+          .from('dd_sessions').select('*')
+          .eq('user_id', user.id).eq('event_id', eventId).eq('is_active', true)
+          .order('started_at', { ascending: false }).limit(1).single();
+        if (sessionData) setActiveSession(sessionData);
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to load event details');
     } finally {
       setLoading(false);
@@ -195,43 +145,18 @@ export default function EventDetailScreen() {
 
   const requestToBeDD = async () => {
     if (!user?.id) return;
-
     setRequestingDD(true);
     try {
-      // Check if a request already exists
-      const { data: existingRequest } = await supabase
-        .from('dd_requests')
-        .select('id, status')
-        .eq('event_id', eventId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingRequest) {
-        // Update existing request (e.g., resubmit after rejection)
-        const { error } = await supabase
-          .from('dd_requests')
-          .update({
-            status: 'pending',
-          })
-          .eq('id', existingRequest.id);
-
-        if (error) throw error;
+      const { data: existing } = await supabase
+        .from('dd_requests').select('id, status').eq('event_id', eventId).eq('user_id', user.id).single();
+      if (existing) {
+        await supabase.from('dd_requests').update({ status: 'pending' }).eq('id', existing.id);
       } else {
-        // Create new request (this will trigger the admin notification)
-        const { error } = await supabase
-          .from('dd_requests')
-          .insert({
-            event_id: eventId,
-            user_id: user.id,
-            status: 'pending',
-          });
-
-        if (error) throw error;
+        await supabase.from('dd_requests').insert({ event_id: eventId, user_id: user.id, status: 'pending' });
       }
-
-      Alert.alert('Success', 'Your DD request has been submitted');
+      Alert.alert('Request Sent', 'Your DD request has been submitted to the admin.');
       fetchEventDetails();
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to submit DD request');
     } finally {
       setRequestingDD(false);
@@ -242,35 +167,17 @@ export default function EventDetailScreen() {
     setAssignModalVisible(true);
     setLoadingMembers(true);
     try {
-      // Fetch all members in the user's group
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('group_id', user?.groupId);
-
-      if (userError) throw userError;
-
-      const mappedUsers: User[] = (userData || []).map((u) => ({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        birthday: new Date(u.birthday),
-        age: u.age,
-        gender: u.gender,
-        groupId: u.group_id,
-        role: u.role,
-        isDD: u.is_dd,
-        carMake: u.car_make,
-        carModel: u.car_model,
-        carPlate: u.car_plate,
-        licensePhotoUrl: u.license_photo_url,
-        createdAt: new Date(u.created_at),
-        updatedAt: new Date(u.updated_at),
-      }));
-
-      setGroupMembers(mappedUsers);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load group members');
+      const { data: userData, error } = await supabase.from('users').select('*').eq('group_id', user?.groupId);
+      if (error) throw error;
+      setGroupMembers((userData || []).map((u) => ({
+        id: u.id, email: u.email, name: u.name, birthday: new Date(u.birthday),
+        age: u.age, gender: u.gender, groupId: u.group_id, role: u.role, isDD: u.is_dd,
+        ddStatus: u.dd_status, carMake: u.car_make, carModel: u.car_model, carPlate: u.car_plate,
+        phoneNumber: u.phone_number, licensePhotoUrl: u.license_photo_url,
+        profilePhotoUrl: u.profile_photo_url, createdAt: new Date(u.created_at), updatedAt: new Date(u.updated_at),
+      })));
+    } catch {
+      Alert.alert('Error', 'Failed to load members');
       setAssignModalVisible(false);
     } finally {
       setLoadingMembers(false);
@@ -280,716 +187,389 @@ export default function EventDetailScreen() {
   const assignDD = async (selectedUserId: string) => {
     setAssigningDD(true);
     try {
-      // Check if assignment already exists
-      const { data: existingAssignment } = await supabase
-        .from('dd_assignments')
-        .select('*')
-        .eq('event_id', eventId)
-        .eq('user_id', selectedUserId)
-        .single();
-
-      if (existingAssignment) {
-        // Update existing assignment
-        const { error } = await supabase
-          .from('dd_assignments')
-          .update({
-            status: 'assigned',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingAssignment.id);
-
-        if (error) throw error;
+      const { data: existing } = await supabase
+        .from('dd_assignments').select('*').eq('event_id', eventId).eq('user_id', selectedUserId).single();
+      if (existing) {
+        await supabase.from('dd_assignments').update({ status: 'assigned', updated_at: new Date().toISOString() }).eq('id', existing.id);
       } else {
-        // Create new assignment
-        const { error } = await supabase.from('dd_assignments').insert({
-          event_id: eventId,
-          user_id: selectedUserId,
-          status: 'assigned',
-        });
-
-        if (error) throw error;
+        await supabase.from('dd_assignments').insert({ event_id: eventId, user_id: selectedUserId, status: 'assigned' });
       }
-
-      Alert.alert('Success', 'DD assigned successfully');
+      Alert.alert('Assigned', 'DD assigned successfully.');
       setAssignModalVisible(false);
       fetchEventDetails();
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to assign DD');
     } finally {
       setAssigningDD(false);
     }
   };
 
-  const startSEPVerification = () => {
-    // Navigate to SEP Reaction screen in 'attempt' mode with eventId
-    navigation.navigate('SEPReaction', {
-      mode: 'attempt',
-      eventId: eventId,
-    });
-  };
-
-  const goToActiveSession = () => {
-    navigation.navigate('DDActiveSession', { eventId });
-  };
-
-  const renderMemberItem = ({ item }: { item: User }) => {
-    const isAlreadyAssigned = ddAssignments.some(
-      (assignment) => assignment.userId === item.id && assignment.status === 'assigned'
-    );
-
-    return (
-      <TouchableOpacity
-        style={[styles.memberItem, isAlreadyAssigned && styles.memberItemAssigned]}
-        onPress={() => assignDD(item.id)}
-        disabled={assigningDD}
-      >
-        <View style={styles.memberInfo}>
-          <Text style={styles.memberName}>{item.name}</Text>
-          <Text style={styles.memberEmail}>{item.email}</Text>
-          {item.isDD && (
-            <View style={styles.ddBadge}>
-              <Text style={styles.ddBadgeText}>DD</Text>
-            </View>
-          )}
-        </View>
-        {isAlreadyAssigned && (
-          <View style={styles.assignedIndicator}>
-            <Text style={styles.assignedText}>✓ Assigned</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
-  const formatDateTime = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'upcoming':
-        return colors.brand.primary;
-      case 'active':
-        return colors.ui.success;
-      case 'completed':
-        return colors.text.tertiary;
-      default:
-        return colors.text.tertiary;
-    }
-  };
-
-  const handleMarkAsCompleted = async () => {
-    Alert.alert(
-      'Mark Event as Completed',
-      'Are you sure you want to mark this event as completed? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+  const handleMarkAsCompleted = () => {
+    Alert.alert('Mark as Completed', 'This action cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Mark Completed', style: 'destructive',
+        onPress: async () => {
+          setMarkingCompleted(true);
+          try {
+            const result = await markEventAsCompleted(eventId);
+            if (result.success) { Alert.alert('Done', 'Event marked as completed'); fetchEventDetails(); }
+            else Alert.alert('Error', result.error || 'Failed');
+          } catch { Alert.alert('Error', 'Failed to mark as completed'); }
+          finally { setMarkingCompleted(false); }
         },
-        {
-          text: 'Mark as Completed',
-          style: 'destructive',
-          onPress: async () => {
-            setMarkingCompleted(true);
-            try {
-              const result = await markEventAsCompleted(eventId);
-              
-              if (result.success) {
-                Alert.alert('Success', 'Event marked as completed');
-                fetchEventDetails(); // Refresh to show updated status
-              } else {
-                Alert.alert('Error', result.error || 'Failed to mark event as completed');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to mark event as completed');
-            } finally {
-              setMarkingCompleted(false);
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
-  const renderDDStatusSection = () => {
-    
-    // Check if user is globally revoked as a DD
+  if (loading) return <LoadingScreen />;
+  if (!event) return <LoadingScreen />;
+
+  const formatDateTime = (date: Date) =>
+    date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) +
+    ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  const renderDDStatus = () => {
     if (user?.ddStatus === 'revoked') {
-      return (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your DD Status</Text>
-          <View style={[styles.statusBox, { backgroundColor: '#FFEBEE' }]}>
-            <Text style={[styles.statusBoxText, { color: '#C62828' }]}>
-              ✗ Your DD privileges have been revoked
-            </Text>
-          </View>
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              You failed SEP verification and can no longer serve as a DD. An admin must reinstate you to regain DD privileges.
-            </Text>
-          </View>
-        </View>
-      );
+      return <StatusBanner icon="close-circle" color={colors.ui.error} text="Your DD privileges have been revoked" subtitle="An admin must reinstate you." />;
     }
-    
     if (!user?.isDD) {
-      return (
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>
-            You are not registered as a DD. To become a DD, update your profile settings.
-          </Text>
-        </View>
-      );
+      return <StatusBanner icon="information-circle-outline" color={colors.text.tertiary} text="Not registered as a DD" subtitle="Update your profile to become a DD." />;
     }
-
-    // User has an active session
     if (activeSession) {
       return (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your DD Status</Text>
-          <View style={[styles.statusBox, { backgroundColor: '#E8F5E9' }]}>
-            <Text style={[styles.statusBoxText, { color: '#2E7D32' }]}>
-              ✓ You have an active DD session
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.primaryButton} onPress={goToActiveSession}>
-            <Text style={styles.primaryButtonText}>Go to Active Session</Text>
-          </TouchableOpacity>
+        <View>
+          <StatusBanner icon="flash" color={colors.ui.success} text="You have an active DD session" />
+          <Button label="Go to Active Session" onPress={() => navigation.navigate('DDActiveSession', { eventId })} style={styles.actionBtn} fullWidth />
         </View>
       );
     }
-
-    // User has an assignment
-    if (userDDAssignment) {
-      if (userDDAssignment.status === 'assigned') {
-        return (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your DD Status</Text>
-            <View style={[styles.statusBox, { backgroundColor: '#E8F5E9' }]}>
-              <Text style={[styles.statusBoxText, { color: '#2E7D32' }]}>
-                ✓ You are assigned as a DD for this event
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.primaryButton} onPress={startSEPVerification}>
-              <Text style={styles.primaryButtonText}>Start SEP Verification</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      } else if (userDDAssignment.status === 'revoked') {
-        return (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your DD Status</Text>
-            <View style={[styles.statusBox, { backgroundColor: '#FFEBEE' }]}>
-              <Text style={[styles.statusBoxText, { color: '#C62828' }]}>
-                ✗ Your DD assignment has been revoked
-              </Text>
-            </View>
-          </View>
-        );
-      }
+    if (userDDAssignment?.status === 'assigned') {
+      return (
+        <View>
+          <StatusBanner icon="checkmark-circle" color={colors.ui.success} text="You are assigned as DD for this event" />
+          <Button label="Start SEP Verification" onPress={() => navigation.navigate('SEPReaction', { mode: 'attempt', eventId })} style={styles.actionBtn} fullWidth />
+        </View>
+      );
     }
-
-    // User has a pending request
+    if (userDDAssignment?.status === 'revoked') {
+      return <StatusBanner icon="close-circle" color={colors.ui.error} text="Your DD assignment has been revoked" />;
+    }
     if (userDDRequest?.status === 'pending') {
-      return (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your DD Status</Text>
-          <View style={[styles.statusBox, { backgroundColor: '#FFF3E0' }]}>
-            <Text style={[styles.statusBoxText, { color: '#E65100' }]}>
-              ⏳ Your DD request is pending admin approval
-            </Text>
-          </View>
-        </View>
-      );
+      return <StatusBanner icon="time-outline" color={colors.ui.warning} text="DD request pending admin approval" />;
     }
-
-    // User has a rejected request
     if (userDDRequest?.status === 'rejected') {
-      return (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your DD Status</Text>
-          <View style={[styles.statusBox, { backgroundColor: '#FFEBEE' }]}>
-            <Text style={[styles.statusBoxText, { color: '#C62828' }]}>
-              ✗ Your DD request was not approved
-            </Text>
-          </View>
-        </View>
-      );
+      return <StatusBanner icon="close-circle-outline" color={colors.ui.error} text="DD request was not approved" />;
     }
-
-    // Check if event is completed
     if (event.status === 'completed') {
-      return (
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>
-            This event has been completed. DD requests are no longer available.
-          </Text>
-        </View>
-      );
+      return <StatusBanner icon="checkmark-done-outline" color={colors.text.tertiary} text="Event completed — DD requests closed" />;
     }
-
-    // Admins should use "Assign DD" instead of requesting
     if (user?.role === 'admin') {
-      return (
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>
-            As an admin, you can assign yourself as a DD using the "Assign DD" button below.
-          </Text>
-        </View>
-      );
+      return <StatusBanner icon="information-circle-outline" color={colors.text.tertiary} text="Use 'Assign DD' below to assign yourself" />;
     }
-
-    // User can request to be DD
     return (
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Become a DD</Text>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={requestToBeDD}
-          disabled={requestingDD}
-        >
-          {requestingDD ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Request to be DD</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      <Button
+        label="Request to be DD"
+        onPress={requestToBeDD}
+        loading={requestingDD}
+        style={styles.actionBtn}
+        fullWidth
+      />
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.brand.primary} />
-      </View>
-    );
-  }
-
-  if (!event) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>Event not found</Text>
-      </View>
-    );
-  }
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Event Header */}
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.eventName}>{event.name}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(event.status) }]}>
-          <Text style={styles.statusText}>{event.status.toUpperCase()}</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.eventName}>{event.name}</Text>
+          <StatusPill status={event.status as any} />
+        </View>
+        <View style={styles.metaRow}>
+          <Ionicons name="calendar-outline" size={15} color={colors.text.tertiary} />
+          <Text style={styles.metaText}>{formatDateTime(event.dateTime)}</Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Ionicons name="location-outline" size={15} color={colors.text.tertiary} />
+          <Text style={styles.metaText}>{event.locationText}</Text>
         </View>
       </View>
 
-      {/* Event Details */}
-      <View style={styles.section}>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailIcon}>📅</Text>
-          <Text style={styles.detailText}>{formatDateTime(event.dateTime)}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailIcon}>📍</Text>
-          <Text style={styles.detailText}>{event.locationText}</Text>
-        </View>
-        {event.description && (
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionLabel}>Description</Text>
+      {/* Description */}
+      {event.description ? (
+        <>
+          <SectionLabel title="About" />
+          <View style={styles.section}>
             <Text style={styles.descriptionText}>{event.description}</Text>
           </View>
-        )}
-      </View>
+        </>
+      ) : null}
 
-      {/* DD Status Section */}
-      {renderDDStatusSection()}
+      {/* Find DDs shortcut */}
+      {event.status !== 'completed' && (
+        <>
+          <SectionLabel title="Designated Drivers" />
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.adminRow}
+              onPress={() => navigation.navigate('DDs' as any, { screen: 'DDsList', params: { initialEventId: event.id } })}
+              activeOpacity={0.7}
+            >
+              <View style={styles.adminRowLeft}>
+                <Ionicons name="car-outline" size={20} color={colors.text.secondary} style={styles.adminIcon} />
+                <View>
+                  <Text style={styles.adminRowText}>Find a DD for this event</Text>
+                  <Text style={styles.adminRowSub}>See who's on duty and request a ride</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      {/* DD Status */}
+      <SectionLabel title="Your DD Status" />
+      <View style={styles.section}>
+        {renderDDStatus()}
+      </View>
 
       {/* Assigned DDs */}
       {ddAssignments.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Assigned DDs</Text>
-          {ddAssignments.map((assignment) => (
-            <View key={assignment.id} style={styles.ddCard}>
-              <View style={styles.ddInfo}>
-                <Text style={styles.ddName}>{assignment.userName}</Text>
-                <View
-                  style={[
-                    styles.ddStatusBadge,
-                    {
-                      backgroundColor:
-                        assignment.status === 'assigned' ? '#E8F5E9' : '#FFEBEE',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.ddStatusText,
-                      {
-                        color: assignment.status === 'assigned' ? '#2E7D32' : '#C62828',
-                      },
-                    ]}
-                  >
-                    {assignment.status.toUpperCase()}
-                  </Text>
+        <>
+          <SectionLabel title="Assigned DDs" />
+          <View style={styles.section}>
+            {ddAssignments.map((a, i) => (
+              <View key={a.id}>
+                <View style={styles.ddRow}>
+                  <Avatar name={a.userName} size={36} />
+                  <View style={styles.ddInfo}>
+                    <Text style={styles.ddName}>{a.userName}</Text>
+                    <Text style={styles.ddEmail}>{a.userEmail}</Text>
+                  </View>
+                  <StatusPill status={a.status === 'assigned' ? 'active' : 'revoked' as any} label={a.status === 'assigned' ? 'Assigned' : 'Revoked'} />
                 </View>
+                {i < ddAssignments.length - 1 && <Divider />}
               </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        </>
       )}
 
       {/* Admin Actions */}
       {user?.role === 'admin' && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Admin Actions</Text>
-          <TouchableOpacity style={styles.secondaryButton} onPress={openAssignModal}>
-            <Text style={styles.secondaryButtonText}>Assign DD</Text>
-          </TouchableOpacity>
-          
-          {event.status !== 'completed' && (
-            <TouchableOpacity
-              style={[styles.secondaryButton, styles.completeButton, markingCompleted && styles.buttonDisabled]}
-              onPress={handleMarkAsCompleted}
-              disabled={markingCompleted}
-            >
-              {markingCompleted ? (
-                <ActivityIndicator color="#8E8E93" size="small" />
-              ) : (
-                <Text style={[styles.secondaryButtonText, styles.completeButtonText]}>
-                  Mark as Completed
-                </Text>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {/* Assign DD Modal */}
-      <Modal
-        visible={assignModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setAssignModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Assign DD</Text>
-              <TouchableOpacity
-                onPress={() => setAssignModalVisible(false)}
-                style={styles.closeButton}
-              >
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {loadingMembers ? (
-              <View style={styles.modalLoadingContainer}>
-                <ActivityIndicator size="large" color={colors.brand.primary} />
+        <>
+          <SectionLabel title="Admin" />
+          <View style={styles.section}>
+            <TouchableOpacity style={styles.adminRow} onPress={openAssignModal} activeOpacity={0.7}>
+              <View style={styles.adminRowLeft}>
+                <Ionicons name="person-add-outline" size={20} color={colors.text.secondary} style={styles.adminIcon} />
+                <Text style={styles.adminRowText}>Assign DD</Text>
               </View>
-            ) : (
-              <FlatList
-                data={groupMembers}
-                keyExtractor={(item) => item.id}
-                renderItem={renderMemberItem}
-                contentContainerStyle={styles.membersList}
-                ListEmptyComponent={
-                  <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>No members found</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+            </TouchableOpacity>
+
+            {event.status !== 'completed' && (
+              <>
+                <Divider />
+                <TouchableOpacity
+                  style={[styles.adminRow, markingCompleted && { opacity: 0.5 }]}
+                  onPress={handleMarkAsCompleted}
+                  disabled={markingCompleted}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.adminRowLeft}>
+                    {markingCompleted
+                      ? <ActivityIndicator size="small" color={colors.text.tertiary} style={styles.adminIcon} />
+                      : <Ionicons name="checkmark-done-outline" size={20} color={colors.text.tertiary} style={styles.adminIcon} />
+                    }
+                    <Text style={[styles.adminRowText, { color: colors.text.secondary }]}>Mark as Completed</Text>
                   </View>
-                }
-              />
+                  <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+                </TouchableOpacity>
+              </>
             )}
           </View>
-        </View>
-      </Modal>
+        </>
+      )}
+
+      {/* Assign DD Sheet */}
+      <SheetModal visible={assignModalVisible} onClose={() => setAssignModalVisible(false)} title="Assign DD">
+        {loadingMembers ? (
+          <View style={styles.sheetLoading}>
+            <ActivityIndicator color={colors.brand.primary} />
+          </View>
+        ) : (
+          <FlatList
+            data={groupMembers}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            renderItem={({ item }) => {
+              const isAssigned = ddAssignments.some(a => a.userId === item.id && a.status === 'assigned');
+              return (
+                <TouchableOpacity
+                  style={[styles.memberRow, isAssigned && styles.memberRowAssigned]}
+                  onPress={() => assignDD(item.id)}
+                  disabled={assigningDD}
+                  activeOpacity={0.7}
+                >
+                  <Avatar name={item.name} size={36} />
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>{item.name}</Text>
+                    <Text style={styles.memberSub}>{item.isDD ? 'Registered DD' : 'Member'}</Text>
+                  </View>
+                  {isAssigned
+                    ? <Ionicons name="checkmark-circle" size={20} color={colors.ui.success} />
+                    : <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+                  }
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={<Text style={styles.emptyText}>No members found</Text>}
+          />
+        )}
+      </SheetModal>
     </ScrollView>
   );
 }
 
+function StatusBanner({ icon, color, text, subtitle }: { icon: keyof typeof Ionicons.glyphMap; color: string; text: string; subtitle?: string }) {
+  return (
+    <View style={[styles.statusBanner, { borderLeftColor: color }]}>
+      <Ionicons name={icon} size={18} color={color} style={styles.statusBannerIcon} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.statusBannerText}>{text}</Text>
+        {subtitle ? <Text style={styles.statusBannerSub}>{subtitle}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg.canvas,
-  },
-  content: {
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.bg.canvas,
-  },
-  errorText: {
-    fontSize: 16,
-    color: colors.text.secondary,
-  },
+  container: { flex: 1, backgroundColor: colors.bg.canvas },
+  content: { paddingBottom: 48 },
+
+  // Header
   header: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+    marginBottom: spacing.md,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+    gap: spacing.md,
   },
   eventName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: colors.text.primary,
-    marginBottom: 8,
+    letterSpacing: -0.3,
+    flex: 1,
   },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginBottom: 6,
   },
-  statusText: {
+  metaText: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    flex: 1,
+    lineHeight: 20,
+  },
+
+  // Sections
+  sectionLabel: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  sectionLabelText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: '600',
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   section: {
     backgroundColor: colors.bg.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border.subtle,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginBottom: 12,
+  divider: {
+    height: 1,
+    backgroundColor: colors.border.subtle,
+    marginVertical: spacing.sm,
   },
-  detailRow: {
+
+  // Description
+  descriptionText: {
+    fontSize: 15,
+    color: colors.text.secondary,
+    lineHeight: 22,
+  },
+
+  // Status banner
+  statusBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    borderLeftWidth: 3,
+    paddingLeft: spacing.md,
+    paddingVertical: 2,
+    marginBottom: spacing.sm,
   },
-  detailIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  detailText: {
-    fontSize: 16,
-    color: colors.text.primary,
-    flex: 1,
-  },
-  descriptionContainer: {
-    marginTop: 8,
-  },
-  descriptionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text.secondary,
-    marginBottom: 4,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: colors.text.primary,
-    lineHeight: 20,
-  },
-  infoBox: {
-    backgroundColor: colors.bg.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  infoText: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    lineHeight: 20,
-  },
-  statusBox: {
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  statusBoxText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  primaryButton: {
-    backgroundColor: colors.brand.primary,
-    borderRadius: 10,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    borderRadius: 10,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.bg.elevated,
-    marginTop: 12,
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.bg.elevated,
-  },
-  completeButton: {
-    borderColor: colors.text.tertiary,
-  },
-  completeButtonText: {
-    color: colors.text.tertiary,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  ddCard: {
-    backgroundColor: colors.bg.input,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  ddInfo: {
+  statusBannerIcon: { marginRight: spacing.sm, marginTop: 1 },
+  statusBannerText: { fontSize: 15, fontWeight: '500', color: colors.text.primary, lineHeight: 22 },
+  statusBannerSub: { fontSize: 13, color: colors.text.secondary, marginTop: 2 },
+
+  actionBtn: { marginTop: spacing.md },
+
+  // Assigned DDs
+  ddRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: spacing.sm,
   },
-  ddName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text.primary,
-  },
-  ddStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  ddStatusText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: colors.bg.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-    paddingBottom: 20,
-  },
-  modalHeader: {
+  ddInfo: { flex: 1, marginLeft: spacing.md },
+  ddName: { fontSize: 15, fontWeight: '600', color: colors.text.primary },
+  ddEmail: { fontSize: 13, color: colors.text.secondary, marginTop: 1 },
+
+  // Admin rows
+  adminRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  adminRowLeft: { flexDirection: 'row', alignItems: 'center' },
+  adminIcon: { marginRight: spacing.md },
+  adminRowText: { fontSize: 16, fontWeight: '600', color: colors.text.primary },
+  adminRowSub: { fontSize: 13, color: colors.text.secondary, marginTop: 1 },
+
+  // Sheet modal
+  sheetLoading: { padding: 40, alignItems: 'center' },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border.default,
+    borderBottomColor: colors.border.subtle,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text.primary,
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.bg.input,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 20,
-    color: colors.text.secondary,
-  },
-  modalLoadingContainer: {
-    padding: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  membersList: {
-    padding: 16,
-  },
-  memberItem: {
-    backgroundColor: colors.bg.input,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  memberItemAssigned: {
-    backgroundColor: colors.bg.surface,
-    borderWidth: 1,
-    borderColor: colors.ui.success,
-  },
-  memberInfo: {
-    flex: 1,
-  },
-  memberName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginBottom: 4,
-  },
-  memberEmail: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    marginBottom: 4,
-  },
-  ddBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginTop: 4,
-  },
-  ddBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  assignedIndicator: {
-    marginLeft: 12,
-  },
-  assignedText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.ui.success,
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colors.text.secondary,
-  },
+  memberRowAssigned: { opacity: 0.7 },
+  memberInfo: { flex: 1, marginLeft: spacing.md },
+  memberName: { fontSize: 15, fontWeight: '600', color: colors.text.primary },
+  memberSub: { fontSize: 13, color: colors.text.secondary, marginTop: 1 },
+  emptyText: { textAlign: 'center', color: colors.text.secondary, padding: 24 },
 });

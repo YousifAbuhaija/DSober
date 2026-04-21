@@ -16,6 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { colors, spacing, typography, radii } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 type EventsStackParamList = {
   EventsList: undefined;
@@ -196,7 +197,7 @@ export default function CreateEventScreen() {
             style={styles.dateTimeButton}
             onPress={() => setShowDatePicker(true)}
           >
-            <Text style={styles.dateTimeIcon}>📅</Text>
+            <Ionicons name="calendar-outline" size={18} color={colors.text.secondary} style={styles.dateTimeIcon} />
             <Text style={styles.dateTimeText}>{formatDate(dateTime)}</Text>
           </TouchableOpacity>
 
@@ -204,7 +205,7 @@ export default function CreateEventScreen() {
             style={styles.dateTimeButton}
             onPress={() => setShowTimePicker(true)}
           >
-            <Text style={styles.dateTimeIcon}>🕐</Text>
+            <Ionicons name="time-outline" size={18} color={colors.text.secondary} style={styles.dateTimeIcon} />
             <Text style={styles.dateTimeText}>{formatTime(dateTime)}</Text>
           </TouchableOpacity>
         </View>
@@ -332,7 +333,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border.default,
   },
   dateTimeIcon: {
-    fontSize: 20,
     marginRight: 8,
   },
   dateTimeText: {
