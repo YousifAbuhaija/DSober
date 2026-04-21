@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -113,9 +113,9 @@ export default function DDsListScreen() {
     loadAll();
   }, [user?.groupId, initialEventId]));
 
-  useFocusEffect(useCallback(() => {
+  useEffect(() => {
     if (selectedEventId) loadDDs(selectedEventId);
-  }, [selectedEventId]));
+  }, [selectedEventId]);
 
   const handleCall = async (phone: string | undefined, name: string) => {
     if (!phone) return;
