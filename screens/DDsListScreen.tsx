@@ -163,6 +163,11 @@ export default function DDsListScreen() {
         keyExtractor={(item) => item.userId}
         contentContainerStyle={activeDDs.length === 0 ? styles.emptyList : styles.list}
         showsVerticalScrollIndicator={false}
+        automaticallyAdjustContentInsets={false}
+        contentInsetAdjustmentBehavior="never"
+        contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
+        scrollIndicatorInsets={{ top: 0 }}
+        contentOffset={{ x: 0, y: 0 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   View,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView, Edge } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { colors } from '../../theme';
 
 interface Props {
@@ -19,6 +19,7 @@ interface Props {
   style?: ViewStyle;
   contentStyle?: ViewStyle;
   bg?: string;
+  keyboardOffset?: number;
 }
 
 export default function ScreenWrapper({
@@ -29,16 +30,38 @@ export default function ScreenWrapper({
   style,
   contentStyle,
   bg = colors.bg.canvas,
+  keyboardOffset = 0,
 }: Props) {
+  // scroll + keyboard: use KeyboardAwareScrollView — handles all focus/scroll logic automatically
+  if (scroll && keyboard) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: bg }, style]} edges={edges}>
+        <StatusBar barStyle="light-content" backgroundColor={bg} />
+        <KeyboardAwareScrollView
+          style={styles.fill}
+          contentContainerStyle={[styles.scrollContent, contentStyle]}
+          enableOnAndroid
+          extraScrollHeight={20}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {children}
+        </KeyboardAwareScrollView>
+      </SafeAreaView>
+    );
+  }
+
   const content = scroll ? (
-    <ScrollView
+    <KeyboardAwareScrollView
       style={styles.fill}
       contentContainerStyle={[styles.scrollContent, contentStyle]}
+      enableOnAndroid
+      extraScrollHeight={20}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   ) : (
     <View style={[styles.fill, contentStyle]}>{children}</View>
   );
@@ -47,7 +70,7 @@ export default function ScreenWrapper({
     <KeyboardAvoidingView
       style={styles.fill}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      keyboardVerticalOffset={keyboardOffset}
     >
       {content}
     </KeyboardAvoidingView>

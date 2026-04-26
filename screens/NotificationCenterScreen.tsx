@@ -173,6 +173,8 @@ export default function NotificationCenterScreen({ navigation }: any) {
         data={grouped}
         keyExtractor={(item) => item.date}
         showsVerticalScrollIndicator={false}
+        automaticallyAdjustContentInsets={false}
+        contentInsetAdjustmentBehavior="never"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.brand.primary} />
         }

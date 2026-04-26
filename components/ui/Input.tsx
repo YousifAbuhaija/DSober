@@ -6,7 +6,6 @@ import {
   TextInputProps,
   StyleSheet,
   ViewStyle,
-  TouchableOpacity,
 } from 'react-native';
 import { colors, radii, spacing, typography } from '../../theme';
 
@@ -69,7 +68,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.base,
   },
   label: {
-    ...typography.caption,
+    fontSize: 14,
+    fontWeight: '400',
     color: colors.text.secondary,
     marginBottom: spacing.xs,
     letterSpacing: 0.3,
@@ -84,10 +84,10 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
+    paddingVertical: 14,
     ...typography.body,
     color: colors.text.primary,
-    minHeight: 48,
+    minHeight: 56,
   },
   inputWithLeft: {
     paddingLeft: spacing.sm,

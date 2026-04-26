@@ -9,16 +9,17 @@ interface Props {
   value?: string;
   valueColor?: string;
   icon?: keyof typeof Ionicons.glyphMap;
+  iconColor?: string;
   onPress?: () => void;
   chevron?: boolean;
 }
 
-export default function InfoRow({ label, subtitle, value, valueColor, icon, onPress, chevron = false }: Props) {
+export default function InfoRow({ label, subtitle, value, valueColor, icon, iconColor, onPress, chevron = false }: Props) {
   const content = (
     <View style={styles.row}>
       {icon && (
         <View style={styles.iconWrap}>
-          <Ionicons name={icon} size={20} color={colors.text.secondary} />
+          <Ionicons name={icon} size={20} color={iconColor ?? colors.text.secondary} />
         </View>
       )}
       <View style={styles.labelWrap}>

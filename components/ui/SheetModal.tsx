@@ -29,6 +29,7 @@ export default function SheetModal({ visible, onClose, children, scroll = false 
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
         style={styles.kav}
         pointerEvents="box-none"
       >

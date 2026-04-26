@@ -121,7 +121,7 @@ export default function EventDetailScreen() {
         const { data: requestData } = await supabase
           .from('dd_requests').select('*')
           .eq('event_id', eventId).eq('user_id', user.id)
-          .in('status', ['pending', 'approved'])
+          .in('status', ['pending', 'approved', 'rejected'])
           .order('created_at', { ascending: false }).limit(1).single();
         if (requestData) {
           setUserDDRequest({ id: requestData.id, eventId: requestData.event_id, userId: requestData.user_id, status: requestData.status, createdAt: new Date(requestData.created_at) });
@@ -167,7 +167,7 @@ export default function EventDetailScreen() {
     setAssignModalVisible(true);
     setLoadingMembers(true);
     try {
-      const { data: userData, error } = await supabase.from('users').select('*').eq('group_id', user?.groupId);
+      const { data: userData, error } = await supabase.from('users').select('*').eq('group_id', user?.groupId).eq('is_dd', true);
       if (error) throw error;
       setGroupMembers((userData || []).map((u) => ({
         id: u.id, email: u.email, name: u.name, birthday: new Date(u.birthday),
@@ -427,7 +427,7 @@ export default function EventDetailScreen() {
                 </TouchableOpacity>
               );
             }}
-            ListEmptyComponent={<Text style={styles.emptyText}>No members found</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>No registered DDs in your chapter yet</Text>}
           />
         )}
       </SheetModal>

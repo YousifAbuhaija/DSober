@@ -26,6 +26,8 @@ import DDRideQueueScreen from './DDRideQueueScreen';
 import RideStatusScreen from './RideStatusScreen';
 import RidesScreen from './RidesScreen';
 import DDUpgradeNavigator from '../navigation/DDUpgradeNavigator';
+import SafetyCenterScreen from './SafetyCenterScreen';
+import ReportIssueScreen from './ReportIssueScreen';
 
 const Tab = createBottomTabNavigator();
 const MainStack = createStackNavigator();
@@ -49,6 +51,7 @@ const HEADER_OPTIONS = {
   },
   headerShadowVisible: false,
   headerBackTitleVisible: false,
+  headerBackTitle: 'Back',
 };
 
 function NotificationBell({ navigation }: { navigation: any }) {
@@ -139,6 +142,8 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} options={{ title: 'Profile' }} />
       <ProfileStack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} options={{ title: 'Notifications' }} />
       <ProfileStack.Screen name="NotificationCenter" component={NotificationCenterScreen} options={{ title: 'Notification History', headerRight: undefined }} />
+      <ProfileStack.Screen name="SafetyCenter" component={SafetyCenterScreen} options={{ title: 'Help & Safety' }} />
+      <ProfileStack.Screen name="ReportIssue" component={ReportIssueScreen} options={{ title: 'Report an Issue' }} />
     </ProfileStack.Navigator>
   );
 }
