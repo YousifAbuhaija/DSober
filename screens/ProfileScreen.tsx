@@ -24,6 +24,7 @@ import InfoRow from '../components/ui/InfoRow';
 import StatusPill from '../components/ui/StatusPill';
 import SheetModal from '../components/ui/SheetModal';
 import LoadingScreen from '../components/ui/LoadingScreen';
+import CircularPhotoCropper from '../components/ui/CircularPhotoCropper';
 import { colors, spacing, typography, radii } from '../theme';
 
 type NavigationProp = StackNavigationProp<any>;
@@ -50,6 +51,7 @@ export default function ProfileScreen() {
   const [fetchError, setFetchError] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [cropperUri, setCropperUri] = useState<string | null>(null);
 
   const [editVisible, setEditVisible] = useState(false);
   const [editMake, setEditMake] = useState('');
@@ -57,6 +59,11 @@ export default function ProfileScreen() {
   const [editPlate, setEditPlate] = useState('');
   const [editError, setEditError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteConfirmError, setDeleteConfirmError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -131,17 +138,19 @@ export default function ProfileScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 1,
     });
 
     if (result.canceled || !result.assets[0]) return;
+    setCropperUri(result.assets[0].uri);
+  };
 
+  const handleCropConfirm = async (croppedUri: string) => {
+    setCropperUri(null);
     setUploadingPhoto(true);
     try {
-      const uri = result.assets[0].uri;
-      const url = await uploadImage(uri, 'profile-photos', `${user!.id}/profile.jpg`);
+      const url = await uploadImage(croppedUri, 'profile-photos', `${user!.id}/profile.jpg`);
       await supabase.from('users').update({ profile_photo_url: url }).eq('id', user!.id);
       await refreshUser();
     } catch (err: any) {
@@ -172,39 +181,28 @@ export default function ProfileScreen() {
     );
   };
 
+  const CONFIRM_PHRASE = 'DELETE MY ACCOUNT';
+
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and all data. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Account',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Are you sure?',
-              'Your rides, DD history, and profile will be deleted permanently.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Yes, Delete',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await supabase.from('users').update({ deleted_at: new Date().toISOString() }).eq('id', user!.id);
-                      await signOut();
-                    } catch {
-                      Alert.alert('Error', 'Could not delete account. Please contact support.');
-                    }
-                  },
-                },
-              ]
-            );
-          },
-        },
-      ]
-    );
+    setDeleteConfirmText('');
+    setDeleteConfirmError('');
+    setDeleteSheetVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirmText.trim() !== CONFIRM_PHRASE) {
+      setDeleteConfirmError(`Type "${CONFIRM_PHRASE}" exactly to confirm.`);
+      return;
+    }
+    setDeleting(true);
+    try {
+      await supabase.from('users').update({ deleted_at: new Date().toISOString() }).eq('id', user!.id);
+      await signOut();
+    } catch {
+      setDeleteConfirmError('Could not delete account. Please contact support.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleLogout = () => {
@@ -372,36 +370,52 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* Danger Zone */}
-        <SectionLabel title="Account" />
+        {/* Session */}
+        <SectionLabel title="Session" />
         <View style={styles.section}>
           <TouchableOpacity
-            style={styles.dangerRow}
-            onPress={handleDeleteAccount}
+            style={styles.sessionRow}
+            onPress={handleLogout}
+            disabled={loggingOut}
             activeOpacity={0.7}
           >
-            <Ionicons name="trash-outline" size={20} color={colors.ui.error} style={styles.dangerIcon} />
-            <Text style={styles.dangerText}>Delete Account</Text>
+            <Ionicons name="log-out-outline" size={20} color={colors.ui.error} style={styles.rowIconLeft} />
+            <Text style={styles.sessionText}>{loggingOut ? 'Logging out…' : 'Log Out'}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Logout */}
-        <TouchableOpacity
-          style={styles.logoutRow}
-          onPress={handleLogout}
-          disabled={loggingOut}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="log-out-outline" size={20} color={colors.ui.error} style={styles.logoutIcon} />
-          <Text style={styles.logoutText}>{loggingOut ? 'Logging out…' : 'Log Out'}</Text>
-        </TouchableOpacity>
+        {/* Danger Zone — buried at the bottom, behind a clear visual gate */}
+        <View style={styles.dangerZone}>
+          <Text style={styles.dangerZoneLabel}>DANGER ZONE</Text>
+          <View style={styles.dangerBlock}>
+            <View style={styles.dangerBlockInner}>
+              <View style={styles.dangerWarningRow}>
+                <Ionicons name="warning-outline" size={18} color={colors.ui.error} style={{ marginRight: spacing.sm }} />
+                <Text style={styles.dangerWarningText}>
+                  Permanently deletes your account, all rides, DD history, and personal data. This cannot be undone.
+                </Text>
+              </View>
+              <View style={styles.dangerDivider} />
+              <TouchableOpacity
+                style={styles.dangerRow}
+                onPress={handleDeleteAccount}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.ui.error} style={styles.rowIconLeft} />
+                <Text style={styles.dangerRowText}>Delete My Account</Text>
+                <Ionicons name="chevron-forward" size={14} color={`${colors.ui.error}80`} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
 
         <Text style={styles.version}>DSober v1.0.0</Text>
       </ScrollView>
 
+      {/* Edit Driver Info Sheet */}
       <SheetModal visible={editVisible} onClose={() => setEditVisible(false)} title="Edit Driver Info">
         <Input label="Car Make" value={editMake} onChangeText={setEditMake} placeholder="e.g. Toyota" />
-        <Input label="Car Model" value={editModel} onChangeText={setEditModel} placeholder="e.g. Camry" style={styles.inputGap} />
+        <Input label="Car Model" value={editModel} onChangeText={setEditModel} placeholder="e.g. Camry" containerStyle={styles.inputGap} />
         <Input
           label="License Plate"
           value={editPlate}
@@ -409,13 +423,61 @@ export default function ProfileScreen() {
           placeholder="e.g. ABC123"
           autoCapitalize="characters"
           error={editError}
-          style={styles.inputGap}
+          containerStyle={styles.inputGap}
         />
         <View style={styles.sheetActions}>
           <Button variant="secondary" label="Cancel" onPress={() => setEditVisible(false)} style={styles.halfBtn} />
           <Button label="Save" onPress={saveDriverInfo} loading={saving} style={styles.halfBtn} />
         </View>
       </SheetModal>
+
+      {/* Delete Account Confirmation Sheet */}
+      <SheetModal
+        visible={deleteSheetVisible}
+        onClose={() => { if (!deleting) setDeleteSheetVisible(false); }}
+        title="Delete Account"
+      >
+        <View style={styles.deleteWarningBox}>
+          <Ionicons name="warning" size={22} color={colors.ui.error} />
+          <Text style={styles.deleteWarningBoxText}>
+            This will permanently delete your account and all associated data. There is no recovery.
+          </Text>
+        </View>
+        <Input
+          label={`Type "DELETE MY ACCOUNT" to confirm`}
+          value={deleteConfirmText}
+          onChangeText={(t) => { setDeleteConfirmText(t); setDeleteConfirmError(''); }}
+          placeholder="DELETE MY ACCOUNT"
+          autoCapitalize="characters"
+          error={deleteConfirmError}
+          containerStyle={styles.inputGap}
+        />
+        <View style={styles.sheetActions}>
+          <Button
+            variant="secondary"
+            label="Cancel"
+            onPress={() => setDeleteSheetVisible(false)}
+            style={styles.halfBtn}
+            disabled={deleting}
+          />
+          <Button
+            variant="danger"
+            label="Delete"
+            onPress={confirmDelete}
+            loading={deleting}
+            disabled={deleteConfirmText.trim() !== 'DELETE MY ACCOUNT'}
+            style={styles.halfBtn}
+          />
+        </View>
+      </SheetModal>
+
+      {cropperUri && (
+        <CircularPhotoCropper
+          uri={cropperUri}
+          onCrop={handleCropConfirm}
+          onCancel={() => setCropperUri(null)}
+        />
+      )}
     </>
   );
 }
@@ -557,38 +619,65 @@ const styles = StyleSheet.create({
     marginLeft: 16 + 32 + 12,
   },
 
-  // Danger row
+  rowIconLeft: { marginRight: spacing.md + 4 },
+
+  // Session (Log Out)
+  sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: spacing.base,
+    minHeight: 52,
+  },
+  sessionText: { fontSize: 16, fontWeight: '600', color: colors.ui.error },
+
+  // Danger Zone
+  dangerZone: {
+    marginTop: spacing.xl * 2,
+    marginBottom: spacing.lg,
+  },
+  dangerZoneLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: `${colors.ui.error}80`,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    paddingHorizontal: spacing.base,
+    paddingBottom: spacing.sm,
+  },
+  dangerBlock: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: `${colors.ui.error}30`,
+  },
+  dangerBlockInner: {
+    backgroundColor: `${colors.ui.error}08`,
+  },
+  dangerWarningRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+  },
+  dangerWarningText: {
+    flex: 1,
+    fontSize: 13,
+    color: `${colors.ui.error}AA`,
+    lineHeight: 19,
+  },
+  dangerDivider: {
+    height: 1,
+    backgroundColor: `${colors.ui.error}20`,
+  },
   dangerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: spacing.base,
+    minHeight: 52,
   },
-  dangerIcon: {
-    marginRight: spacing.md + 4,
-  },
-  dangerText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.ui.error,
-  },
-
-  // Logout
-  logoutRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: spacing.base,
-    marginTop: spacing.lg,
-    backgroundColor: colors.bg.surface,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  logoutIcon: {
-    marginRight: spacing.md + 4,
-  },
-  logoutText: {
+  dangerRowText: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '600',
     color: colors.ui.error,
@@ -598,7 +687,27 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text.tertiary,
     textAlign: 'center',
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+
+  // Delete warning box
+  deleteWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: `${colors.ui.error}12`,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: `${colors.ui.error}30`,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  deleteWarningBoxText: {
+    flex: 1,
+    fontSize: 13,
+    color: `${colors.ui.error}CC`,
+    lineHeight: 19,
   },
 
   // Sheet

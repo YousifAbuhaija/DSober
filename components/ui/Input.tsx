@@ -37,7 +37,12 @@ const Input = forwardRef<TextInput, Props>(function Input(
         {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
         <TextInput
           ref={ref}
-          style={[styles.input, leftIcon ? styles.inputWithLeft : null, style]}
+          style={[
+            styles.input,
+            leftIcon ? styles.inputWithLeft : null,
+            { textAlignVertical: rest.multiline ? 'top' : 'center' },
+            style,
+          ]}
           placeholderTextColor={colors.text.tertiary}
           selectionColor={colors.brand.primary}
           onFocus={(e) => {
@@ -68,26 +73,26 @@ const styles = StyleSheet.create({
     marginBottom: spacing.base,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: colors.text.secondary,
+    ...typography.label,
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
     marginBottom: spacing.xs,
-    letterSpacing: 0.3,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bg.input,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
+    borderRadius: radii.sm,
+    borderWidth: 1,
   },
   input: {
     flex: 1,
     paddingHorizontal: spacing.base,
-    paddingVertical: 14,
-    ...typography.body,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontWeight: '400' as const,
     color: colors.text.primary,
-    minHeight: 56,
+    minHeight: 48,
   },
   inputWithLeft: {
     paddingLeft: spacing.sm,

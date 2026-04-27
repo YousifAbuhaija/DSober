@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import Input from '../../components/ui/Input';
+import DatePickerInput from '../../components/ui/DatePickerInput';
 import Button from '../../components/ui/Button';
 import StepProgress from '../../components/ui/StepProgress';
 import { colors, spacing, typography, radii } from '../../theme';
@@ -19,25 +20,6 @@ function calculateAge(birthDate: Date): number {
   return age;
 }
 
-function parseBirthday(text: string): Date | null {
-  const parts = text.split('/');
-  if (parts.length !== 3) return null;
-  const month = parseInt(parts[0], 10) - 1;
-  const day = parseInt(parts[1], 10);
-  const year = parseInt(parts[2], 10);
-  if (isNaN(month) || isNaN(day) || isNaN(year)) return null;
-  if (month < 0 || month > 11 || day < 1 || day > 31) return null;
-  if (year < 1900 || year > new Date().getFullYear()) return null;
-  return new Date(year, month, day);
-}
-
-function formatBirthday(text: string): string {
-  const c = text.replace(/\D/g, '');
-  if (c.length >= 4) return `${c.slice(0, 2)}/${c.slice(2, 4)}/${c.slice(4, 8)}`;
-  if (c.length >= 2) return `${c.slice(0, 2)}/${c.slice(2)}`;
-  return c;
-}
-
 function formatPhone(phone: string): string {
   const d = phone.replace(/\D/g, '');
   if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
@@ -50,16 +32,21 @@ function isValidPhone(phone: string): boolean {
   return d.length === 10 || (d.length === 11 && d[0] === '1');
 }
 
+const MAX_BIRTHDAY = (() => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 18);
+  return d;
+})();
+
 export default function BasicInfoScreen({ navigation }: any) {
   const { session } = useAuth();
   const [name, setName] = useState('');
-  const [birthday, setBirthday] = useState('');
+  const [birthday, setBirthday] = useState<Date | null>(null);
   const [gender, setGender] = useState('');
   const [phone, setPhone] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  const birthdayRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
 
   const clearError = (field: string) =>
@@ -68,12 +55,10 @@ export default function BasicInfoScreen({ navigation }: any) {
   const validate = () => {
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = 'Full name is required';
-    if (!birthday.trim()) {
+    if (!birthday) {
       next.birthday = 'Birthday is required';
-    } else {
-      const d = parseBirthday(birthday);
-      if (!d) next.birthday = 'Enter a valid date (MM/DD/YYYY)';
-      else if (calculateAge(d) < 18) next.birthday = 'You must be at least 18 years old';
+    } else if (calculateAge(birthday) < 18) {
+      next.birthday = 'You must be at least 18 years old';
     }
     if (!gender) next.gender = 'Please select your gender';
     if (!phone.trim()) next.phone = 'Phone number is required';
@@ -86,13 +71,12 @@ export default function BasicInfoScreen({ navigation }: any) {
     if (!validate()) return;
     setLoading(true);
     try {
-      const d = parseBirthday(birthday)!;
       await supabase.from('users').upsert({
         id: session!.user.id,
         email: session!.user.email || '',
         name: name.trim(),
-        birthday: d.toISOString(),
-        age: calculateAge(d),
+        birthday: birthday!.toISOString(),
+        age: calculateAge(birthday!),
         gender,
         phone_number: formatPhone(phone),
         role: 'member',
@@ -124,20 +108,16 @@ export default function BasicInfoScreen({ navigation }: any) {
           error={errors.name}
           autoCapitalize="words"
           returnKeyType="next"
-          onSubmitEditing={() => birthdayRef.current?.focus()}
+          onSubmitEditing={() => phoneRef.current?.focus()}
         />
 
-        <Input
-          ref={birthdayRef}
+        <DatePickerInput
           label="Birthday"
           value={birthday}
-          onChangeText={(v) => { setBirthday(formatBirthday(v)); clearError('birthday'); }}
+          onChange={(d) => { setBirthday(d); clearError('birthday'); }}
+          maximumDate={MAX_BIRTHDAY}
           error={errors.birthday}
-          hint="MM/DD/YYYY — must be 18+"
-          keyboardType="numeric"
-          maxLength={10}
-          returnKeyType="next"
-          onSubmitEditing={() => phoneRef.current?.focus()}
+          hint="Must be 18 or older"
         />
 
         <View style={styles.genderBlock}>
@@ -206,10 +186,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   fieldLabel: {
-    ...typography.caption,
-    color: colors.text.secondary,
+    ...typography.label,
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
     marginBottom: spacing.sm,
-    letterSpacing: 0.3,
   },
   genderBlock: {
     marginBottom: spacing.base,
@@ -222,8 +202,8 @@ const styles = StyleSheet.create({
   genderOption: {
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
+    borderRadius: radii.sm,
+    borderWidth: 1,
     borderColor: colors.border.default,
     backgroundColor: colors.bg.input,
   },

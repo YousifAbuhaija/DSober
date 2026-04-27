@@ -19,6 +19,9 @@ web-build/
 .env.local
 .env.*.local
 
+# Dev seed accounts (contains credentials)
+dev-accounts.md
+
 # macOS
 .DS_Store
 *\ 2.*

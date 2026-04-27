@@ -8,11 +8,12 @@ interface Props {
   style?: ViewStyle;
   padding?: number;
   elevated?: boolean;
+  noShadow?: boolean;
 }
 
-export default function Card({ children, onPress, style, padding = spacing.base, elevated = false }: Props) {
+export default function Card({ children, onPress, style, padding = spacing.base, elevated = false, noShadow = false }: Props) {
   const bg = elevated ? colors.bg.elevated : colors.bg.surface;
-  const containerStyle = [styles.card, { backgroundColor: bg, padding }, style];
+  const containerStyle = [styles.card, noShadow && styles.noShadow, { backgroundColor: bg, padding }, style];
 
   if (onPress) {
     return (
@@ -29,5 +30,10 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: radii.lg,
     ...(shadow.sm as object),
+  },
+  noShadow: {
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
 });

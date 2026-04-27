@@ -66,41 +66,44 @@ export default function EventsListScreen() {
 
   return (
     <View style={styles.container}>
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index, section }) => {
-          const isLast = index === section.data.length - 1;
-          return <EventRow event={item} isLast={isLast} onPress={() => navigation.navigate('EventDetail', { eventId: item.id })} />;
-        }}
-        renderSectionHeader={({ section }) => (
-          <View style={styles.sectionLabel}>
-            <Text style={styles.sectionLabelText}>{section.title.toUpperCase()}</Text>
-          </View>
-        )}
-        ListEmptyComponent={
+      {eventList.length === 0 ? (
+        <View style={styles.emptyContainer}>
           <EmptyState
             icon="calendar-outline"
             title="No events yet"
-            subtitle={user?.role === 'admin' ? 'Tap + to create your first event.' : 'Your chapter hasn\'t posted any events yet.'}
+            subtitle={user?.role === 'admin' ? 'Tap + to create your first event.' : "Your chapter hasn't posted any events yet."}
           />
-        }
-        contentContainerStyle={eventList.length === 0 ? styles.emptyList : styles.list}
-        stickySectionHeadersEnabled={false}
-        showsVerticalScrollIndicator={false}
-        automaticallyAdjustContentInsets={false}
-        contentInsetAdjustmentBehavior="never"
-        contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
-        scrollIndicatorInsets={{ top: 0 }}
-        contentOffset={{ x: 0, y: 0 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading && !!events}
-            onRefresh={refetch}
-            tintColor={colors.brand.primary}
-          />
-        }
-      />
+        </View>
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item, index, section }) => {
+            const isLast = index === section.data.length - 1;
+            return <EventRow event={item} isLast={isLast} onPress={() => navigation.navigate('EventDetail', { eventId: item.id })} />;
+          }}
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionLabel}>
+              <Text style={styles.sectionLabelText}>{section.title.toUpperCase()}</Text>
+            </View>
+          )}
+          contentContainerStyle={styles.list}
+          stickySectionHeadersEnabled={false}
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustContentInsets={false}
+          contentInsetAdjustmentBehavior="never"
+          contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
+          scrollIndicatorInsets={{ top: 0 }}
+          contentOffset={{ x: 0, y: 0 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading && !!events}
+              onRefresh={refetch}
+              tintColor={colors.brand.primary}
+            />
+          }
+        />
+      )}
 
       {user?.role === 'admin' && (
         <TouchableOpacity
@@ -152,7 +155,7 @@ function EventRow({ event, isLast, onPress }: { event: Event; isLast: boolean; o
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },
   list: { paddingBottom: 80 },
-  emptyList: { flex: 1 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   sectionLabel: {
     paddingHorizontal: spacing.base,

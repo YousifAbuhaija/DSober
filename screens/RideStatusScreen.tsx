@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Linking, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,8 +9,8 @@ import { RideRequest, User } from '../types/database.types';
 import { mapRideRequest, mapUser } from '../utils/mappers';
 import { useRealtime } from '../hooks/useRealtime';
 import Avatar from '../components/ui/Avatar';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import SectionHeader from '../components/ui/SectionHeader';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import { colors, spacing, typography, radii } from '../theme';
 
@@ -39,7 +39,7 @@ const STATUS_META: Record<string, StatusMeta> = {
   },
   picked_up: {
     icon: 'car-outline',
-    color: colors.ui.info,
+    color: colors.brand.primary,
     title: 'En Route',
     body: 'Enjoy your ride! Your driver will mark the trip complete when you arrive.',
   },
@@ -128,57 +128,66 @@ export default function RideStatusScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Status hero */}
-      <Card style={[styles.statusCard, { borderLeftColor: meta.color }]} elevated>
-        <View style={styles.statusIconWrap}>
-          <Ionicons name={meta.icon} size={48} color={meta.color} />
-        </View>
-        <Text style={[styles.statusTitle, { color: meta.color }]}>{meta.title}</Text>
-        <Text style={styles.statusBody}>{meta.body}</Text>
-      </Card>
 
-      {/* Pickup */}
-      <Card elevated style={styles.section}>
-        <Text style={styles.sectionLabel}>PICKUP LOCATION</Text>
+      {/* Status hero — centered on canvas */}
+      <View style={[styles.hero, { borderTopColor: meta.color }]}>
+        <View style={[styles.heroIcon, { backgroundColor: `${meta.color}18` }]}>
+          <Ionicons name={meta.icon} size={40} color={meta.color} />
+        </View>
+        <Text style={[styles.heroTitle, { color: meta.color }]}>{meta.title}</Text>
+        <Text style={styles.heroBody}>{meta.body}</Text>
+      </View>
+
+      {/* Pickup location */}
+      <SectionHeader title="PICKUP LOCATION" />
+      <View style={styles.section}>
         <View style={styles.locationRow}>
-          <Ionicons name="location-outline" size={16} color={colors.text.tertiary} />
+          <Ionicons name="location-outline" size={18} color={colors.text.tertiary} style={styles.rowIcon} />
           <Text style={styles.locationText}>{request.pickupLocationText}</Text>
         </View>
-      </Card>
+      </View>
 
-      {/* Driver info */}
+      {/* Driver info — shown once accepted */}
       {ddUser && request.status !== 'pending' && (
-        <Card elevated style={styles.section}>
-          <Text style={styles.sectionLabel}>YOUR DRIVER</Text>
-          <View style={styles.driverRow}>
-            <Avatar uri={ddUser.profilePhotoUrl} name={ddUser.name} size={52} />
-            <View style={styles.driverInfo}>
-              <Text style={styles.driverName}>{ddUser.name}</Text>
-              {ddUser.carMake && ddUser.carModel ? (
-                <View style={styles.carRow}>
-                  <Ionicons name="car-outline" size={13} color={colors.text.tertiary} />
-                  <Text style={styles.carText}>{ddUser.carMake} {ddUser.carModel}</Text>
-                </View>
-              ) : null}
-              {ddUser.carPlate ? (
-                <Text style={styles.plateText}>{ddUser.carPlate}</Text>
-              ) : null}
+        <>
+          <SectionHeader title="YOUR DRIVER" />
+          <View style={styles.section}>
+            <View style={styles.driverRow}>
+              <Avatar uri={ddUser.profilePhotoUrl} name={ddUser.name} size={48} />
+              <View style={styles.driverInfo}>
+                <Text style={styles.driverName}>{ddUser.name}</Text>
+                {ddUser.carMake && ddUser.carModel ? (
+                  <View style={styles.carRow}>
+                    <Ionicons name="car-outline" size={13} color={colors.text.tertiary} />
+                    <Text style={styles.carText}>{ddUser.carMake} {ddUser.carModel}</Text>
+                  </View>
+                ) : null}
+                {ddUser.carPlate ? (
+                  <Text style={styles.platePill}>{ddUser.carPlate}</Text>
+                ) : null}
+              </View>
             </View>
+
+            {ddUser.phoneNumber ? (
+              <>
+                <View style={styles.divider} />
+                <TouchableOpacity style={styles.callRow} onPress={handleCallDD} activeOpacity={0.7}>
+                  <View style={styles.callRowLeft}>
+                    <Ionicons name="call-outline" size={18} color={colors.ui.success} style={styles.rowIcon} />
+                    <Text style={[styles.rowLabel, { color: colors.ui.success }]}>Call Driver</Text>
+                  </View>
+                  <View style={styles.callRowRight}>
+                    <Text style={styles.phoneText}>{ddUser.phoneNumber}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={colors.text.tertiary} />
+                  </View>
+                </TouchableOpacity>
+              </>
+            ) : null}
           </View>
-          {ddUser.phoneNumber ? (
-            <Button
-              variant="success"
-              leftIcon={<Ionicons name="call-outline" size={16} color="#fff" />}
-              label="Call Driver"
-              onPress={handleCallDD}
-              fullWidth
-              style={styles.callBtn}
-            />
-          ) : null}
-        </Card>
+        </>
       )}
 
-      {/* Cancel (pending only) */}
+      {/* Cancel — pending only */}
       {request.status === 'pending' && (
         <Button
           variant="danger"
@@ -195,21 +204,59 @@ export default function RideStatusScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },
-  content: { padding: spacing.xl, paddingBottom: spacing['3xl'] },
-  statusCard: { alignItems: 'center', marginBottom: spacing.xl, borderLeftWidth: 4 },
-  statusIconWrap: { marginBottom: spacing.md },
-  statusTitle: { ...typography.title2, textAlign: 'center', marginBottom: spacing.sm },
-  statusBody: { ...typography.callout, color: colors.text.secondary, textAlign: 'center', lineHeight: 22 },
-  section: { marginBottom: spacing.xl },
-  sectionLabel: { ...typography.label, color: colors.text.tertiary, marginBottom: spacing.sm },
-  locationRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  content: { paddingBottom: 60 },
+
+  hero: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
+    marginHorizontal: spacing.base,
+    marginTop: spacing.base,
+    marginBottom: spacing.md,
+    backgroundColor: colors.bg.surface,
+    borderRadius: 12,
+    borderTopWidth: 3,
+  },
+  heroIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  heroTitle: { ...typography.title3, textAlign: 'center', marginBottom: spacing.sm },
+  heroBody: { ...typography.callout, color: colors.text.secondary, textAlign: 'center', lineHeight: 22 },
+
+  section: {
+    backgroundColor: colors.bg.surface,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border.subtle,
+    paddingHorizontal: spacing.base,
+  },
+
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 14,
+    gap: spacing.sm,
+  },
+  rowIcon: { marginTop: 1 },
   locationText: { ...typography.body, color: colors.text.primary, flex: 1 },
-  driverRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.base },
+
+  driverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+  },
   driverInfo: { flex: 1 },
-  driverName: { ...typography.bodyBold, color: colors.text.primary, marginBottom: spacing.xs },
-  carRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  driverName: { ...typography.bodyBold, color: colors.text.primary, marginBottom: 4 },
+  carRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 4 },
   carText: { ...typography.caption, color: colors.text.tertiary },
-  plateText: {
+  platePill: {
     ...typography.caption,
     color: colors.text.secondary,
     backgroundColor: colors.bg.muted,
@@ -217,10 +264,23 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: radii.sm,
     fontWeight: '600',
-    alignSelf: 'flex-start',
     overflow: 'hidden',
-    marginTop: spacing.xs,
+    alignSelf: 'flex-start',
   },
-  callBtn: {},
-  cancelBtn: {},
+
+  divider: { height: 1, backgroundColor: colors.border.subtle },
+
+  callRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    minHeight: 52,
+  },
+  callRowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  callRowRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  rowLabel: { ...typography.body, fontWeight: '600', color: colors.text.primary },
+  phoneText: { ...typography.caption, color: colors.text.secondary },
+
+  cancelBtn: { marginHorizontal: spacing.base, marginTop: spacing.xl },
 });

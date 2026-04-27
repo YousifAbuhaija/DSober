@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
   Alert,
   Linking,
   RefreshControl,
@@ -13,16 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { RideRequest } from '../types/database.types';
-import { calculateDistance } from '../utils/location';
 import { mapRideRequest } from '../utils/mappers';
 import { useRealtime } from '../hooks/useRealtime';
 import Avatar from '../components/ui/Avatar';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import SectionHeader from '../components/ui/SectionHeader';
 import EmptyState from '../components/ui/EmptyState';
 import LoadingScreen from '../components/ui/LoadingScreen';
-import { colors, spacing, typography, radii } from '../theme';
+import { colors, spacing, typography } from '../theme';
 
 type RouteParams = { sessionId: string; eventId: string };
 
@@ -33,17 +32,21 @@ interface RideRequestWithRider extends RideRequest {
 }
 
 const formatAge = (date: Date) => {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
+  const diffMins = Math.floor((Date.now() - date.getTime()) / 60000);
   if (diffMins < 1) return 'just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   return `${Math.floor(diffMins / 60)}h ago`;
 };
 
+const QUEUE_STATUS: Record<string, { color: string; label: string }> = {
+  pending:   { color: colors.ui.warning,  label: 'PENDING' },
+  accepted:  { color: colors.ui.success,  label: 'ACCEPTED' },
+  picked_up: { color: colors.brand.primary, label: 'EN ROUTE' },
+};
+
 export default function DDRideQueueScreen() {
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-  const { sessionId, eventId } = route.params;
+  const { eventId } = route.params;
   const { user } = useAuth();
 
   const [requests, setRequests] = useState<RideRequestWithRider[]>([]);
@@ -69,11 +72,7 @@ export default function DDRideQueueScreen() {
 
       const enriched: RideRequestWithRider[] = (data || []).map((r) => {
         const rider = riders?.find((u) => u.id === r.rider_user_id);
-        return {
-          ...mapRideRequest(r),
-          riderName: rider?.name ?? 'Unknown',
-          riderPhoneNumber: rider?.phone_number ?? undefined,
-        };
+        return { ...mapRideRequest(r), riderName: rider?.name ?? 'Unknown', riderPhoneNumber: rider?.phone_number ?? undefined };
       });
 
       enriched.sort((a, b) => {
@@ -99,11 +98,8 @@ export default function DDRideQueueScreen() {
     [eventId]
   );
 
-  const updateStatus = async (id: string, status: string, extraFields?: Record<string, string>) => {
-    const { error } = await supabase
-      .from('ride_requests')
-      .update({ status, ...extraFields })
-      .eq('id', id);
+  const updateStatus = async (id: string, status: string, extra?: Record<string, string>) => {
+    const { error } = await supabase.from('ride_requests').update({ status, ...extra }).eq('id', id);
     if (error) throw error;
     fetchRequests();
   };
@@ -111,10 +107,7 @@ export default function DDRideQueueScreen() {
   const handleAccept = (req: RideRequestWithRider) => {
     Alert.alert('Accept Ride', `Accept ${req.riderName}'s request?`, [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Accept',
-        onPress: () => updateStatus(req.id, 'accepted', { accepted_at: new Date().toISOString() }),
-      },
+      { text: 'Accept', onPress: () => updateStatus(req.id, 'accepted', { accepted_at: new Date().toISOString() }) },
     ]);
   };
 
@@ -125,10 +118,7 @@ export default function DDRideQueueScreen() {
   const handleComplete = (req: RideRequestWithRider) => {
     Alert.alert('Complete Ride', `Mark ${req.riderName} as dropped off?`, [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Complete',
-        onPress: () => updateStatus(req.id, 'completed', { completed_at: new Date().toISOString() }),
-      },
+      { text: 'Complete', onPress: () => updateStatus(req.id, 'completed', { completed_at: new Date().toISOString() }) },
     ]);
   };
 
@@ -141,10 +131,10 @@ export default function DDRideQueueScreen() {
 
   if (loading) return <LoadingScreen message="Loading requests…" />;
 
-  const pending   = requests.filter((r) => r.status === 'pending');
-  const accepted  = requests.filter((r) => r.status === 'accepted');
-  const active    = requests.filter((r) => r.status === 'picked_up');
-  const total     = requests.length;
+  const pending  = requests.filter((r) => r.status === 'pending');
+  const accepted = requests.filter((r) => r.status === 'accepted');
+  const active   = requests.filter((r) => r.status === 'picked_up');
+  const total    = requests.length;
 
   return (
     <ScrollView
@@ -159,61 +149,14 @@ export default function DDRideQueueScreen() {
         />
       }
     >
-      <View style={styles.countRow}>
-        <Text style={styles.countText}>{total} active {total === 1 ? 'request' : 'requests'}</Text>
-        <View style={styles.realtimeDot} />
+      {/* Live indicator */}
+      <View style={styles.liveRow}>
+        <View style={styles.liveDot} />
+        <Text style={styles.liveText}>LIVE</Text>
+        <Text style={styles.countText}>
+          {total === 0 ? 'No active requests' : `${total} active ${total === 1 ? 'request' : 'requests'}`}
+        </Text>
       </View>
-
-      {/* Active / Picked Up */}
-      {active.length > 0 && (
-        <QueueSection title="Current Ride" accent={colors.brand.primary}>
-          {active.map((r) => (
-            <RideCard
-              key={r.id}
-              req={r}
-              onCall={() => handleCall(r.riderPhoneNumber)}
-              primaryLabel="Mark Dropped Off"
-              onPrimary={() => handleComplete(r)}
-              accentColor={colors.brand.primary}
-              badge={{ icon: 'car', label: 'EN ROUTE', color: colors.brand.primary }}
-            />
-          ))}
-        </QueueSection>
-      )}
-
-      {/* Accepted */}
-      {accepted.length > 0 && (
-        <QueueSection title="Accepted" accent={colors.ui.success}>
-          {accepted.map((r) => (
-            <RideCard
-              key={r.id}
-              req={r}
-              onCall={() => handleCall(r.riderPhoneNumber)}
-              primaryLabel="Mark Picked Up"
-              onPrimary={() => handlePickUp(r)}
-              accentColor={colors.ui.success}
-              badge={{ icon: 'checkmark-circle', label: 'ACCEPTED', color: colors.ui.success }}
-            />
-          ))}
-        </QueueSection>
-      )}
-
-      {/* Pending */}
-      {pending.length > 0 && (
-        <QueueSection title="Pending Requests" accent={colors.ui.warning}>
-          {pending.map((r) => (
-            <RideCard
-              key={r.id}
-              req={r}
-              onCall={() => handleCall(r.riderPhoneNumber)}
-              primaryLabel="Accept Ride"
-              onPrimary={() => handleAccept(r)}
-              accentColor={colors.ui.warning}
-              badge={{ icon: 'time-outline', label: 'PENDING', color: colors.ui.warning }}
-            />
-          ))}
-        </QueueSection>
-      )}
 
       {total === 0 && (
         <EmptyState
@@ -222,119 +165,237 @@ export default function DDRideQueueScreen() {
           subtitle="Requests will appear here when members need a ride."
         />
       )}
+
+      {/* Current (picked up) */}
+      {active.length > 0 && (
+        <QueueBlock
+          title="CURRENT RIDE"
+          requests={active}
+          onCall={handleCall}
+          primaryLabel="Mark Dropped Off"
+          onPrimary={handleComplete}
+        />
+      )}
+
+      {/* Accepted */}
+      {accepted.length > 0 && (
+        <QueueBlock
+          title="ACCEPTED"
+          requests={accepted}
+          onCall={handleCall}
+          primaryLabel="Mark Picked Up"
+          onPrimary={handlePickUp}
+        />
+      )}
+
+      {/* Pending */}
+      {pending.length > 0 && (
+        <QueueBlock
+          title="PENDING REQUESTS"
+          requests={pending}
+          onCall={handleCall}
+          primaryLabel="Accept Ride"
+          onPrimary={handleAccept}
+        />
+      )}
     </ScrollView>
   );
 }
 
-function QueueSection({ title, accent, children }: { title: string; accent: string; children: React.ReactNode }) {
+function QueueBlock({
+  title, requests, onCall, primaryLabel, onPrimary,
+}: {
+  title: string;
+  requests: RideRequestWithRider[];
+  onCall: (phone: string | undefined) => void;
+  primaryLabel: string;
+  onPrimary: (req: RideRequestWithRider) => void;
+}) {
   return (
-    <View style={styles.section}>
+    <View style={styles.queueBlock}>
       <SectionHeader title={title} />
-      {children}
+      <View style={styles.blockSurface}>
+        {requests.map((req, index) => (
+          <QueueRow
+            key={req.id}
+            req={req}
+            isLast={index === requests.length - 1}
+            primaryLabel={primaryLabel}
+            onPrimary={() => onPrimary(req)}
+            onCall={() => onCall(req.riderPhoneNumber)}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
-function RideCard({
-  req, onCall, primaryLabel, onPrimary, accentColor,
-  badge,
+function QueueRow({
+  req, isLast, primaryLabel, onPrimary, onCall,
 }: {
   req: RideRequestWithRider;
-  onCall: () => void;
+  isLast: boolean;
   primaryLabel: string;
   onPrimary: () => void;
-  accentColor: string;
-  badge: { icon: keyof typeof Ionicons.glyphMap; label: string; color: string };
+  onCall: () => void;
 }) {
-  return (
-    <Card style={[styles.rideCard, { borderLeftColor: accentColor }]} elevated>
-      <View style={styles.badgeRow}>
-        <Ionicons name={badge.icon} size={12} color={badge.color} />
-        <Text style={[styles.badgeText, { color: badge.color }]}>{badge.label}</Text>
-        <Text style={styles.ageText}>{formatAge(req.createdAt)}</Text>
-      </View>
+  const status = QUEUE_STATUS[req.status] ?? QUEUE_STATUS.pending;
 
-      <View style={styles.riderRow}>
-        <Avatar name={req.riderName} size={40} />
-        <View style={styles.riderInfo}>
-          <Text style={styles.riderName}>{req.riderName}</Text>
-          {req.distance !== undefined ? (
-            <Text style={styles.distText}>{req.distance.toFixed(1)} mi away</Text>
+  return (
+    <View style={[styles.queueRow, !isLast && styles.queueRowBorder]}>
+      {/* 3px left color bar */}
+      <View style={[styles.colorBar, { backgroundColor: status.color }]} />
+
+      <View style={styles.queueRowContent}>
+        {/* Status badge + age */}
+        <View style={styles.badgeRow}>
+          <View style={[styles.statusDot, { backgroundColor: status.color }]} />
+          <Text style={[styles.statusLabel, { color: status.color }]}>{status.label}</Text>
+          <Text style={styles.ageText}>{formatAge(req.createdAt)}</Text>
+        </View>
+
+        {/* Rider info */}
+        <View style={styles.riderRow}>
+          <Avatar name={req.riderName} size={36} />
+          <View style={styles.riderInfo}>
+            <Text style={styles.riderName}>{req.riderName}</Text>
+            {req.distance !== undefined && (
+              <Text style={styles.distText}>{req.distance.toFixed(1)} mi away</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Pickup location */}
+        <View style={styles.pickupRow}>
+          <Ionicons name="location-outline" size={12} color={colors.text.tertiary} />
+          <Text style={styles.pickupText} numberOfLines={2} ellipsizeMode="tail">
+            {req.pickupLocationText}
+          </Text>
+        </View>
+
+        {/* Actions */}
+        <View style={styles.actions}>
+          {req.riderPhoneNumber ? (
+            <TouchableOpacity style={styles.callBtn} onPress={onCall} activeOpacity={0.7}>
+              <Ionicons name="call-outline" size={16} color={colors.text.primary} />
+              <Text style={styles.callBtnText}>Call</Text>
+            </TouchableOpacity>
           ) : null}
+          <Button label={primaryLabel} onPress={onPrimary} style={styles.primaryBtn} />
         </View>
       </View>
-
-      <View style={styles.pickupBlock}>
-        <Ionicons name="location-outline" size={13} color={colors.text.tertiary} />
-        <Text style={styles.pickupText} numberOfLines={2}>{req.pickupLocationText}</Text>
-      </View>
-
-      <View style={styles.actions}>
-        {req.riderPhoneNumber ? (
-          <Button
-            variant="secondary"
-            leftIcon={<Ionicons name="call-outline" size={16} color={colors.text.primary} />}
-            label="Call"
-            onPress={onCall}
-            style={styles.callBtn}
-          />
-        ) : null}
-        <Button
-          label={primaryLabel}
-          onPress={onPrimary}
-          style={styles.mainBtn}
-        />
-      </View>
-    </Card>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },
-  content: { padding: spacing.xl, paddingBottom: spacing['3xl'] },
-  countRow: {
+  content: { paddingBottom: 60 },
+
+  liveRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
   },
-  countText: { ...typography.callout, color: colors.text.secondary },
-  realtimeDot: {
+  liveDot: {
     width: 7,
     height: 7,
     borderRadius: 4,
     backgroundColor: colors.ui.success,
   },
-  section: { marginBottom: spacing.xl },
-  rideCard: { marginBottom: spacing.md, borderLeftWidth: 3 },
+  liveText: {
+    ...typography.label,
+    color: colors.ui.success,
+    letterSpacing: 1,
+  },
+  countText: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+    flex: 1,
+  },
+
+  queueBlock: { marginBottom: spacing.xl },
+
+  blockSurface: {
+    backgroundColor: colors.bg.surface,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+
+  queueRow: {
+    flexDirection: 'row',
+    minHeight: 64,
+  },
+  queueRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+  },
+
+  colorBar: {
+    width: 3,
+    alignSelf: 'stretch',
+  },
+
+  queueRowContent: {
+    flex: 1,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginBottom: spacing.sm,
   },
-  badgeText: { ...typography.label, flex: 1 },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusLabel: {
+    ...typography.label,
+    flex: 1,
+    letterSpacing: 0.5,
+  },
   ageText: { ...typography.caption, color: colors.text.tertiary },
+
   riderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    marginBottom: spacing.sm,
   },
   riderInfo: { flex: 1 },
   riderName: { ...typography.bodyBold, color: colors.text.primary },
-  distText: { ...typography.caption, color: colors.text.tertiary },
-  pickupBlock: {
+  distText: { ...typography.caption, color: colors.text.tertiary, marginTop: 2 },
+
+  pickupRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.xs,
     backgroundColor: colors.bg.muted,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+    borderRadius: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  pickupText: { ...typography.callout, color: colors.text.secondary, flex: 1, lineHeight: 20 },
-  actions: { flexDirection: 'row', gap: spacing.sm },
-  callBtn: { width: 90 },
-  mainBtn: { flex: 1 },
+  pickupText: { ...typography.caption, color: colors.text.secondary, flex: 1, lineHeight: 18 },
+
+  actions: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  callBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.bg.elevated,
+    borderRadius: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    height: 40,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  callBtnText: { ...typography.caption, color: colors.text.primary, fontWeight: '600' },
+  primaryBtn: { flex: 1 },
 });

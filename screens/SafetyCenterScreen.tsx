@@ -170,8 +170,7 @@ export default function SafetyCenterScreen() {
       </View>
 
       <Text style={styles.footer}>
-        DSober is a safety tool, not a substitute for emergency services.{'\n'}
-        In any life-threatening situation, call 911 immediately.
+        DSober is a safety tool, not a substitute for emergency services. In any life-threatening situation, call 911 immediately.
       </Text>
     </ScrollView>
   );

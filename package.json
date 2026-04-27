@@ -17,7 +17,8 @@
     "check-requests": "ts-node scripts/check-user-requests.ts",
     "delete-request": "ts-node scripts/delete-user-request.ts",
     "add-profile-photo": "ts-node scripts/add-profile-photo-column.ts",
-    "verify-dd-realtime": "ts-node scripts/verify-dd-upgrade-realtime.ts"
+    "verify-dd-realtime": "ts-node scripts/verify-dd-upgrade-realtime.ts",
+    "seed-users": "ts-node scripts/seed-users.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -33,6 +34,7 @@
     "expo-camera": "~17.0.10",
     "expo-dev-client": "~6.0.20",
     "expo-device": "~8.0.10",
+    "expo-image-manipulator": "~14.0.8",
     "expo-image-picker": "~17.0.10",
     "expo-location": "~19.0.8",
     "expo-notifications": "~0.32.16",

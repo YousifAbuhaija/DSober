@@ -90,6 +90,8 @@ const styles = StyleSheet.create({
   },
   fill: {
     flex: 1,
+    width: '100%',
+    alignSelf: 'stretch',
   },
   scrollContent: {
     flexGrow: 1,

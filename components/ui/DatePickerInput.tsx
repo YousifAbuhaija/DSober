@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radii, spacing } from '../../theme';
+import { colors, radii, spacing, typography } from '../../theme';
 
 interface Props {
   label?: string;
@@ -90,21 +90,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.base,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: colors.text.secondary,
+    ...typography.label,
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
     marginBottom: spacing.xs,
-    letterSpacing: 0.3,
   },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bg.input,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
+    borderRadius: radii.sm,
+    borderWidth: 1,
     paddingHorizontal: spacing.base,
-    paddingVertical: 14,
-    minHeight: 56,
+    paddingVertical: 12,
+    minHeight: 48,
   },
   value: {
     flex: 1,
@@ -127,6 +126,6 @@ const styles = StyleSheet.create({
   picker: {
     marginTop: spacing.sm,
     backgroundColor: colors.bg.input,
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
   },
 });

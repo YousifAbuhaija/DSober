@@ -2,22 +2,24 @@ import React from 'react';
 import {
   Modal,
   View,
+  Text,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
-import { colors, radii, spacing } from '../../theme';
+import { colors, radii, spacing, typography } from '../../theme';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  title?: string;
   scroll?: boolean;
 }
 
-export default function SheetModal({ visible, onClose, children, scroll = false }: Props) {
+export default function SheetModal({ visible, onClose, children, title, scroll = false }: Props) {
   return (
     <Modal
       visible={visible}
@@ -35,6 +37,7 @@ export default function SheetModal({ visible, onClose, children, scroll = false 
       >
         <View style={styles.sheet}>
           <View style={styles.handle} />
+          {title ? <Text style={styles.title}>{title}</Text> : null}
           {scroll ? (
             <ScrollView
               keyboardShouldPersistTaps="handled"
@@ -74,6 +77,11 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.border.default,
     alignSelf: 'center',
+    marginBottom: spacing.base,
+  },
+  title: {
+    ...typography.title3,
+    color: colors.text.primary,
     marginBottom: spacing.base,
   },
 });
