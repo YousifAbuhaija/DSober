@@ -150,9 +150,11 @@ export default function EventDetailScreen() {
       const { data: existing } = await supabase
         .from('dd_requests').select('id, status').eq('event_id', eventId).eq('user_id', user.id).single();
       if (existing) {
-        await supabase.from('dd_requests').update({ status: 'pending' }).eq('id', existing.id);
+        const { error } = await supabase.from('dd_requests').update({ status: 'pending' }).eq('id', existing.id);
+        if (error) throw error;
       } else {
-        await supabase.from('dd_requests').insert({ event_id: eventId, user_id: user.id, status: 'pending' });
+        const { error } = await supabase.from('dd_requests').insert({ event_id: eventId, user_id: user.id, status: 'pending' });
+        if (error) throw error;
       }
       Alert.alert('Request Sent', 'Your DD request has been submitted to the admin.');
       fetchEventDetails();
@@ -190,9 +192,11 @@ export default function EventDetailScreen() {
       const { data: existing } = await supabase
         .from('dd_assignments').select('*').eq('event_id', eventId).eq('user_id', selectedUserId).single();
       if (existing) {
-        await supabase.from('dd_assignments').update({ status: 'assigned', updated_at: new Date().toISOString() }).eq('id', existing.id);
+        const { error } = await supabase.from('dd_assignments').update({ status: 'assigned', updated_at: new Date().toISOString() }).eq('id', existing.id);
+        if (error) throw error;
       } else {
-        await supabase.from('dd_assignments').insert({ event_id: eventId, user_id: selectedUserId, status: 'assigned' });
+        const { error } = await supabase.from('dd_assignments').insert({ event_id: eventId, user_id: selectedUserId, status: 'assigned' });
+        if (error) throw error;
       }
       Alert.alert('Assigned', 'DD assigned successfully.');
       setAssignModalVisible(false);

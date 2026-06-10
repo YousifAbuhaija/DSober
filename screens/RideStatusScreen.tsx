@@ -59,13 +59,16 @@ export default function RideStatusScreen() {
   const fetchStatus = async () => {
     if (!user) return;
     try {
-      const { data: rd } = await supabase
+      const { data: rd, error: fetchErr } = await supabase
         .from('ride_requests')
         .select('*')
         .eq('rider_user_id', user.id)
         .eq('event_id', eventId)
         .in('status', ['pending', 'accepted', 'picked_up'])
         .maybeSingle();
+
+      // On fetch failure keep the current view — only leave when we know the ride is gone
+      if (fetchErr) return;
 
       if (!rd) {
         if (navigation.canGoBack()) navigation.goBack();
@@ -103,7 +106,11 @@ export default function RideStatusScreen() {
         onPress: async () => {
           setCancelling(true);
           try {
-            await supabase.from('ride_requests').update({ status: 'cancelled' }).eq('id', request.id);
+            const { error } = await supabase.from('ride_requests').update({ status: 'cancelled' }).eq('id', request.id);
+            if (error) {
+              Alert.alert('Error', 'Could not cancel the ride. Please try again.');
+              return;
+            }
             if (navigation.canGoBack()) navigation.goBack();
           } finally {
             setCancelling(false);

@@ -100,7 +100,10 @@ export default function DDRideQueueScreen() {
 
   const updateStatus = async (id: string, status: string, extra?: Record<string, string>) => {
     const { error } = await supabase.from('ride_requests').update({ status, ...extra }).eq('id', id);
-    if (error) throw error;
+    if (error) {
+      Alert.alert('Error', 'Could not update the ride. Please try again.');
+      return;
+    }
     fetchRequests();
   };
 

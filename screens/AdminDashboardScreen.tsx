@@ -115,25 +115,33 @@ export default function AdminDashboardScreen() {
     setProcessingId(req.id);
     try {
       if (req.user.ddStatus === 'revoked') {
-        await supabase.from('dd_requests').update({ status: 'rejected' }).eq('id', req.id);
+        const { error } = await supabase.from('dd_requests').update({ status: 'rejected' }).eq('id', req.id);
+        if (error) throw error;
         setPendingRequests((p) => p.filter((r) => r.id !== req.id));
         Alert.alert('Cannot Approve', `${req.user.name} has a revoked DD status.`);
         return;
       }
-      await supabase.from('dd_assignments').upsert(
+      const { error: assignErr } = await supabase.from('dd_assignments').upsert(
         { event_id: req.eventId, user_id: req.userId, status: 'assigned', updated_at: new Date().toISOString() },
         { onConflict: 'event_id,user_id' }
       );
-      await supabase.from('dd_requests').update({ status: 'approved' }).eq('id', req.id);
+      if (assignErr) throw assignErr;
+      const { error: approveErr } = await supabase.from('dd_requests').update({ status: 'approved' }).eq('id', req.id);
+      if (approveErr) throw approveErr;
       setPendingRequests((p) => p.filter((r) => r.id !== req.id));
+    } catch {
+      Alert.alert('Error', 'Failed to approve the request. Please try again.');
     } finally { setProcessingId(null); }
   };
 
   const rejectRequest = async (req: DDRequestWithDetails) => {
     setProcessingId(req.id);
     try {
-      await supabase.from('dd_requests').update({ status: 'rejected' }).eq('id', req.id);
+      const { error } = await supabase.from('dd_requests').update({ status: 'rejected' }).eq('id', req.id);
+      if (error) throw error;
       setPendingRequests((p) => p.filter((r) => r.id !== req.id));
+    } catch {
+      Alert.alert('Error', 'Failed to reject the request. Please try again.');
     } finally { setProcessingId(null); }
   };
 
@@ -141,12 +149,17 @@ export default function AdminDashboardScreen() {
     if (!user?.id) return;
     setProcessingId(alert.id);
     try {
-      await supabase.from('users').update({ dd_status: 'active' }).eq('id', alert.userId);
-      await supabase.from('dd_assignments').delete().eq('user_id', alert.userId);
-      await supabase.from('admin_alerts')
+      const { error: statusErr } = await supabase.from('users').update({ dd_status: 'active' }).eq('id', alert.userId);
+      if (statusErr) throw statusErr;
+      const { error: assignErr } = await supabase.from('dd_assignments').delete().eq('user_id', alert.userId);
+      if (assignErr) throw assignErr;
+      const { error: alertErr } = await supabase.from('admin_alerts')
         .update({ resolved_at: new Date().toISOString(), resolved_by_admin_id: user.id })
         .eq('user_id', alert.userId).is('resolved_at', null);
+      if (alertErr) throw alertErr;
       setSepAlerts((p) => p.filter((a) => a.userId !== alert.userId));
+    } catch {
+      Alert.alert('Error', 'Failed to reinstate. Please try again.');
     } finally { setProcessingId(null); }
   };
 
@@ -154,10 +167,13 @@ export default function AdminDashboardScreen() {
     if (!user?.id) return;
     setProcessingId(alert.id);
     try {
-      await supabase.from('admin_alerts')
+      const { error } = await supabase.from('admin_alerts')
         .update({ resolved_at: new Date().toISOString(), resolved_by_admin_id: user.id })
         .eq('user_id', alert.userId).eq('event_id', alert.eventId).is('resolved_at', null);
+      if (error) throw error;
       setSepAlerts((p) => p.filter((a) => !(a.userId === alert.userId && a.eventId === alert.eventId)));
+    } catch {
+      Alert.alert('Error', 'Failed to resolve the alert. Please try again.');
     } finally { setProcessingId(null); }
   };
 
