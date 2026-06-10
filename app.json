@@ -4,7 +4,7 @@
     "slug": "DSober",
     "version": "1.0.0",
     "orientation": "portrait",
-    "projectId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "scheme": "dsober",
     "icon": "./assets/dsober_logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -27,7 +27,6 @@
         "NSCameraUsageDescription": "This app needs access to your camera to take photos for sobriety verification.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload your driver's license.",
         "UIBackgroundModes": [
-          "remote-notification",
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -74,7 +73,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow DSober to use your location to find nearby designated drivers."
+          "locationWhenInUsePermission": "DSober uses your location to show nearby designated drivers and your distance from them during events.",
+          "locationAlwaysAndWhenInUsePermission": "DSober uses your location to show nearby designated drivers and your distance from them during events."
         }
       ],
       [
