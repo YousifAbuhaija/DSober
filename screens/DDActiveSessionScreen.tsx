@@ -77,11 +77,40 @@ export default function DDActiveSessionScreen() {
         onPress: async () => {
           setEnding(true);
           try {
-            await supabase.from('dd_sessions').update({
+            // Don't strand riders mid-trip: block while rides are in progress
+            const { data: activeRides, error: ridesErr } = await supabase
+              .from('ride_requests')
+              .select('id')
+              .eq('dd_user_id', user!.id)
+              .eq('event_id', eventId)
+              .in('status', ['accepted', 'picked_up']);
+            if (ridesErr) throw ridesErr;
+            if (activeRides && activeRides.length > 0) {
+              Alert.alert(
+                'Rides In Progress',
+                'Complete or cancel your accepted rides in the ride queue before ending your session.'
+              );
+              return;
+            }
+
+            // Cancel still-pending requests so riders aren't waiting on an offline DD
+            const { error: cancelErr } = await supabase
+              .from('ride_requests')
+              .update({ status: 'cancelled' })
+              .eq('dd_user_id', user!.id)
+              .eq('event_id', eventId)
+              .eq('status', 'pending');
+            if (cancelErr) throw cancelErr;
+
+            const { error: endErr } = await supabase.from('dd_sessions').update({
               ended_at: new Date().toISOString(),
               is_active: false,
             }).eq('id', session.id);
+            if (endErr) throw endErr;
+
             navigation.navigate('EventDetail', { eventId });
+          } catch {
+            Alert.alert('Error', 'Could not end the session. Please try again.');
           } finally {
             setEnding(false);
           }
