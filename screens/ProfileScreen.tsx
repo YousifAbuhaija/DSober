@@ -43,7 +43,7 @@ function Divider() {
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { user, signOut, refreshUser } = useAuth();
+  const { user, signOut, refreshUser, requestPasswordReset } = useAuth();
 
   const [groupName, setGroupName] = useState<string | null>(null);
   const [sepBaseline, setSepBaseline] = useState<SEPBaseline | null>(null);
@@ -170,8 +170,8 @@ export default function ProfileScreen() {
           text: 'Send Link',
           onPress: async () => {
             try {
-              await supabase.auth.resetPasswordForEmail(user!.email);
-              Alert.alert('Email Sent', 'Check your inbox for the password reset link.');
+              await requestPasswordReset(user!.email);
+              Alert.alert('Email Sent', 'Open the reset link on this phone to set a new password.');
             } catch {
               Alert.alert('Error', 'Failed to send reset email. Please try again.');
             }

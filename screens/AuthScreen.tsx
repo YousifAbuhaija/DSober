@@ -24,10 +24,11 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const passwordRef = useRef<TextInput>(null);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, requestPasswordReset } = useAuth();
 
   const validate = () => {
     const next: typeof errors = {};
@@ -57,15 +58,32 @@ export default function AuthScreen() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
+      setErrors({ email: 'Enter your email above first' });
+      return;
+    }
+    setLoading(true);
+    try {
+      await requestPasswordReset(email.trim());
+      setResetSent(true);
+    } catch (error: any) {
+      handleError(error, 'Password Reset');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const switchMode = () => {
     setMode((m) => (m === 'login' ? 'signup' : 'login'));
     setEmail('');
     setPassword('');
     setErrors({});
     setConfirmationSent(false);
+    setResetSent(false);
   };
 
-  if (confirmationSent) {
+  if (confirmationSent || resetSent) {
     return (
       <ScreenWrapper keyboard>
         <View style={styles.confirmContainer}>
@@ -74,11 +92,13 @@ export default function AuthScreen() {
           </View>
           <Text style={styles.confirmTitle}>Check your inbox</Text>
           <Text style={styles.confirmBody}>
-            We sent a confirmation link to{'\n'}
+            We sent a {resetSent ? 'password reset' : 'confirmation'} link to{'\n'}
             <Text style={styles.confirmEmail}>{email}</Text>
           </Text>
           <Text style={styles.confirmHint}>
-            Click the link to activate your account, then come back and log in.
+            {resetSent
+              ? 'Open the link on this phone to set a new password.'
+              : "Open the link on this phone to activate your account — you'll be signed in automatically."}
           </Text>
           <TouchableOpacity style={styles.backLink} onPress={switchMode}>
             <Ionicons name="arrow-back" size={16} color={colors.brand.primary} />
@@ -163,6 +183,17 @@ export default function AuthScreen() {
             }
           />
 
+          {mode === 'login' && (
+            <TouchableOpacity
+              style={styles.forgotRow}
+              onPress={handleForgotPassword}
+              disabled={loading}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+          )}
+
           <Button
             onPress={handleSubmit}
             label={mode === 'login' ? 'Log In' : 'Create Account'}
@@ -242,6 +273,15 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: spacing.xs,
+  },
+  forgotRow: {
+    alignSelf: 'flex-end',
+    paddingVertical: spacing.xs,
+  },
+  forgotText: {
+    ...typography.caption,
+    color: colors.brand.primary,
+    fontWeight: '600',
   },
   cta: {
     marginTop: spacing.sm,
