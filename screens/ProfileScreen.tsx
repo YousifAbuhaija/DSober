@@ -196,7 +196,8 @@ export default function ProfileScreen() {
     }
     setDeleting(true);
     try {
-      await supabase.from('users').update({ deleted_at: new Date().toISOString() }).eq('id', user!.id);
+      const { error } = await supabase.functions.invoke('delete-account');
+      if (error) throw error;
       await signOut();
     } catch {
       setDeleteConfirmError('Could not delete account. Please contact support.');
