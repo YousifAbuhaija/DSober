@@ -84,6 +84,13 @@
           "color": "#FF6B35",
           "sounds": []
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "REPLACE_WITH_SENTRY_ORG",
+          "project": "REPLACE_WITH_SENTRY_PROJECT"
+        }
       ]
     ],
     "extra": {
@@ -91,7 +98,8 @@
         "projectId": "78313b66-d12b-46c6-a668-da823b1e6119"
       },
       "supabaseUrl": "https://ybsinrajanwhabgivsvv.supabase.co",
-      "supabaseAnonKey": "sb_publishable_TkZuzZ-UGXlNkPmtbOMpLg__p6WihFx"
+      "supabaseAnonKey": "sb_publishable_TkZuzZ-UGXlNkPmtbOMpLg__p6WihFx",
+      "sentryDsn": ""
     },
     "owner": "yousifabuhaija"
   }
