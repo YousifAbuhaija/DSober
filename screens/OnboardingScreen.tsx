@@ -54,8 +54,7 @@ export default function OnboardingScreen() {
         headerTitleStyle: {
           fontWeight: '600',
         },
-        headerBackTitleVisible: false,
-        headerBackTitle: 'Back',
+        headerBackButtonDisplayMode: 'minimal',
       }}
     >
       <Stack.Screen

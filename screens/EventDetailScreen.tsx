@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -71,10 +72,16 @@ export default function EventDetailScreen() {
   const [assigningDD, setAssigningDD] = useState(false);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [markingCompleted, setMarkingCompleted] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { fetchEventDetails(); }, [eventId]);
 
   useFocusEffect(React.useCallback(() => { fetchEventDetails(); }, [eventId]));
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try { await fetchEventDetails(); } finally { setRefreshing(false); }
+  };
 
   const fetchEventDetails = async () => {
     try {
@@ -283,7 +290,14 @@ export default function EventDetailScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand.primary} />
+      }
+    >
 
       {/* Header */}
       <View style={styles.header}>

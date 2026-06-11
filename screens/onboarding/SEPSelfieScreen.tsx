@@ -37,7 +37,7 @@ export default function SEPSelfieScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
         <EmptyState
-          icon="camera-off-outline"
+          icon="camera-outline"
           title="Camera access required"
           subtitle="DSober needs camera access to capture your selfie for verification."
           action={{ label: 'Grant Access', onPress: requestPermission }}
