@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DSober — Privacy Policy</title>
+  <style>
+    :root { --ink:#1a1a1a; --muted:#5a5a5a; --accent:#FF6B35; --rule:#e6e6e6; --bg:#fbfaf8; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: "Charter", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      line-height: 1.65; font-size: 18px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 64px 24px 96px; }
+    header { border-bottom: 2px solid var(--ink); padding-bottom: 24px; margin-bottom: 40px; }
+    .kicker {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--accent); margin: 0 0 8px;
+    }
+    h1 { font-size: 40px; line-height: 1.1; margin: 0 0 12px; letter-spacing: -0.02em; }
+    .meta { color: var(--muted); font-size: 15px; margin: 0; }
+    h2 {
+      font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+      margin: 44px 0 12px; padding-top: 20px; border-top: 1px solid var(--rule);
+    }
+    h3 { font-size: 19px; margin: 24px 0 6px; }
+    p, li { color: #2a2a2a; }
+    a { color: var(--accent); }
+    ul { padding-left: 22px; }
+    li { margin: 6px 0; }
+    .lede { font-size: 20px; color: #2a2a2a; }
+    .note {
+      background: #fff; border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+      padding: 16px 20px; border-radius: 6px; font-size: 16px; margin: 20px 0;
+    }
+    code { font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; background:#f0eee9; padding:1px 5px; border-radius:4px; }
+    footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="kicker">DSober</p>
+      <h1>Privacy Policy</h1>
+      <p class="meta">Last updated: June 11, 2026</p>
+    </header>
+
+    <p class="lede">
+      DSober is a designated-driver coordination app operated by
+      <strong>[CLUB / ORGANIZATION NAME]</strong> ("we," "us"). It helps members of our
+      chapter request rides, volunteer as designated drivers, and complete a brief
+      sobriety check before driving. This policy explains what we collect, why, and
+      the choices you have.
+    </p>
+
+    <h2>Information We Collect</h2>
+
+    <h3>Account &amp; profile</h3>
+    <ul>
+      <li>Email address and password (for sign-in).</li>
+      <li>Name, date of birth (and the age derived from it), and gender.</li>
+      <li>Phone number, used so a driver and rider can contact each other for a ride.</li>
+      <li>An optional profile photo.</li>
+    </ul>
+
+    <h3>Designated-driver information (only if you volunteer to drive)</h3>
+    <ul>
+      <li>Vehicle make, model, and license plate.</li>
+      <li>A photo of your driver's license, used to verify you are a licensed driver.</li>
+    </ul>
+
+    <h3>Sobriety verification (SEP)</h3>
+    <p>
+      Before each driving session, and once during onboarding to establish a baseline,
+      we collect a short reaction-time result, a brief voice recording of a spoken
+      phrase, and a selfie. These are compared against your baseline to check fitness
+      to drive. Results may be shared with your chapter's administrators (see below).
+    </p>
+
+    <h3>Location</h3>
+    <p>
+      With your permission, we use your device's <strong>precise location</strong> while
+      the app is in use to show nearby designated drivers and your distance from them
+      during an event. We do not track your location in the background.
+    </p>
+
+    <h3>Usage &amp; device</h3>
+    <ul>
+      <li>Events you join, ride requests, driving sessions, and notification history.</li>
+      <li>A push-notification token plus your device name, operating system, and app
+          version, used to deliver notifications.</li>
+      <li>If crash reporting is enabled, diagnostic crash and error data (no message
+          content) to help us fix bugs.</li>
+    </ul>
+
+    <h2>How We Use Your Information</h2>
+    <ul>
+      <li>To operate the core service: matching riders with drivers, running events,
+          and coordinating rides.</li>
+      <li>To run the sobriety check and notify chapter administrators of a failed check
+          or a revoked driving status, for safety.</li>
+      <li>To send you notifications you've opted into (and critical safety alerts).</li>
+      <li>To secure accounts and prevent misuse.</li>
+    </ul>
+    <p>We do <strong>not</strong> sell your personal information or use it for advertising.</p>
+
+    <h2>How Information Is Shared</h2>
+    <ul>
+      <li><strong>Within your chapter.</strong> Other members in your chapter can see a
+          driver's name, photo, vehicle, and (during a ride) phone number. Your chapter's
+          administrators can see members' driver information and sobriety-check results
+          for safety oversight.</li>
+      <li><strong>Service providers.</strong> We use Supabase (database, authentication,
+          and file storage), Expo (push notification delivery), and—if enabled—Sentry
+          (crash diagnostics). They process data only to provide these services.</li>
+      <li><strong>Legal.</strong> We may disclose information if required by law or to
+          protect someone's safety.</li>
+    </ul>
+
+    <h2>Data Retention &amp; Deletion</h2>
+    <p>
+      We keep your information for as long as your account is active. You can permanently
+      delete your account at any time from <strong>Profile → Delete My Account</strong>.
+      Deletion removes your profile, ride and driving history, sobriety-check records, and
+      uploaded photos and audio. This action cannot be undone.
+    </p>
+
+    <h2>Security</h2>
+    <p>
+      Data is transmitted over encrypted connections and stored with access controls so
+      that members can reach only the data appropriate to their role. Sensitive files
+      (license photos, sobriety selfies and audio) are kept in private storage and served
+      only through short-lived, access-controlled links. No system is perfectly secure,
+      but we take reasonable measures to protect your information.
+    </p>
+
+    <h2>Age Requirement</h2>
+    <p>
+      DSober is intended for members of our organization who are of legal age and is not
+      directed to children under 13. Because the app is used in contexts involving alcohol,
+      it is rated for adults; you must comply with all applicable laws regarding alcohol.
+    </p>
+
+    <h2>Your Choices</h2>
+    <ul>
+      <li>Manage which notifications you receive in <strong>Notification Settings</strong>
+          (some critical safety alerts cannot be turned off).</li>
+      <li>Grant or revoke camera, microphone, photo, and location permissions in your
+          device settings.</li>
+      <li>Access or delete your data using the in-app account-deletion tool, or by
+          contacting us below.</li>
+    </ul>
+
+    <h2>Changes to This Policy</h2>
+    <p>
+      We may update this policy from time to time. Material changes will be reflected by
+      the "Last updated" date above.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions about this policy or your data? Contact us at
+      <a href="mailto:[CONTACT EMAIL]">[CONTACT EMAIL]</a>.
+    </p>
+
+    <footer>
+      © 2026 [CLUB / ORGANIZATION NAME]. DSober.
+    </footer>
+  </div>
+</body>
+</html>

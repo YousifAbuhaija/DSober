@@ -8,19 +8,21 @@ access, or a decision**, so they're left for you. Do them in order.
 
 ## 1. Supabase production auth config (dashboard) — `P1.7`
 
-Dashboard → Project `ybsinrajanwhabgivsvv` → **Authentication**:
+Applied via the Management API already:
 
-- [ ] **Providers → Email**: enable **Confirm email** (the app already handles
-      the "check your inbox" state and signs the user in via the `dsober://`
-      deep link).
-- [ ] **URL Configuration**: set **Site URL** to `dsober://` and add these
-      **Redirect URLs**: `dsober://auth-callback`, `dsober://reset-password`.
-      (Without these, email-confirmation and password-reset links won't return
-      to the app.)
-- [ ] **Custom SMTP**: configure a real SMTP sender (e.g. Resend free tier).
-      The default Supabase SMTP allows only ~2–3 emails/hour and **will throttle
-      50–100 signups** on launch night.
-- [ ] **Password security**: enable **leaked password protection** (advisor WARN).
+- [x] **Site URL** → `dsober://auth-callback`
+- [x] **Redirect URLs** → `dsober://auth-callback`, `dsober://reset-password`,
+      `dsober://*` (without these, confirmation/reset links can't return to the app).
+- [x] **Leaked-password protection** → on (`password_hibp_enabled = true`).
+
+Still to do — these two must land **together** (turning on confirmation without a
+working sender breaks all signups):
+
+- [ ] **Custom SMTP**: configure a real sender (e.g. Resend free tier). The default
+      Supabase SMTP allows only ~2–3 emails/hour and **will throttle 50–100 signups**.
+- [ ] **Confirm email** (`mailer_autoconfirm = false`): currently OFF so signups
+      aren't blocked on un-sendable emails. Flip it in the same step as SMTP.
+      (Give me SMTP creds + a fresh PAT and I'll do both in one call.)
 
 ## 2. Sentry crash reporting — `P2.3` (finish)
 
@@ -38,10 +40,12 @@ Prereq: **Apple Developer Program** membership ($99/yr).
 
 - [ ] Fill `eas.json` → `submit.production.ios`: `appleId`, `ascAppId`
       (App Store Connect app's numeric ID), `appleTeamId`.
-- [ ] Host a **privacy policy** and put its URL in App Store Connect. The app
-      collects: email, name, birthday, phone, **precise location**, **photos**
-      (incl. driver's license), and **audio recordings** — declare these in
-      App Privacy.
+- [ ] Host the **privacy policy** (drafted at `docs/privacy.html` — fill in the
+      `[CLUB / ORGANIZATION NAME]` and `[CONTACT EMAIL]` placeholders) and put its
+      URL in App Store Connect. Easiest host: GitHub Pages from `/docs`
+      (Settings → Pages → Source: `main` / `/docs`). The data to declare in App
+      Privacy: email, name, birthday, phone, **precise location**, **photos**
+      (incl. driver's license), and **audio recordings**.
 - [ ] App Store Connect → set **age rating 17+** (alcohol reference).
 - [ ] Beta App Review info: provide a demo account + a short "what is SEP" note.
 - [ ] Build & submit:
