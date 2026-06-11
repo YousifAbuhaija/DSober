@@ -2,10 +2,9 @@
 # WARNING: THIS PROJECT USES SUPABASE CLOUD ONLY
 # ============================================================================
 # This config.toml is for local Supabase, but we DON'T use it.
-# The app connects to: https://hdkvgrpshgswdgsqihpp.supabase.co
-# 
+# The app connects to: https://ybsinrajanwhabgivsvv.supabase.co
+#
 # DO NOT run: supabase start, supabase db reset, or local psql commands
-# See .supabase-config.md for proper workflow
 # ============================================================================
 
 # Supabase local development configuration (NOT USED)

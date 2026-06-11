@@ -616,6 +616,15 @@ serve(async (req) => {
       );
     }
 
+    // Authenticate webhook calls from database triggers (verify_jwt is off for this function)
+    const webhookSecret = Deno.env.get('NOTIFY_WEBHOOK_SECRET');
+    if (!webhookSecret || req.headers.get('x-webhook-secret') !== webhookSecret) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse request body
     const request: NotificationRequest = await req.json();
 

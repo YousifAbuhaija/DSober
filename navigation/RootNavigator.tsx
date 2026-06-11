@@ -8,11 +8,12 @@ import { colors } from '../theme';
 import AuthScreen from '../screens/AuthScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import MainAppScreen from '../screens/MainAppScreen';
+import SetNewPasswordScreen from '../screens/SetNewPasswordScreen';
 
 const Stack = createStackNavigator();
 
 export default function RootNavigator() {
-  const { session, user, loading } = useAuth();
+  const { session, user, loading, passwordRecovery } = useAuth();
   const [hasSEPBaseline, setHasSEPBaseline] = useState(false);
   const [checkingBaseline, setCheckingBaseline] = useState(true);
   const [recheckTrigger, setRecheckTrigger] = useState(0);
@@ -94,6 +95,17 @@ export default function RootNavigator() {
         <Text style={{ fontSize: 48, fontWeight: 'bold', color: '#fff', marginBottom: 20 }}>DSober</Text>
         <ActivityIndicator size="large" color={colors.bg.elevated} />
       </View>
+    );
+  }
+
+  // Arrived via a password-reset link — force setting a new password first
+  if (session && passwordRecovery) {
+    return (
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="SetNewPassword" component={SetNewPasswordScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
     );
   }
 

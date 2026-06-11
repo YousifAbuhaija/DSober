@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, AppState } from 'react-native';
 import Constants from 'expo-constants';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
@@ -76,10 +76,12 @@ async function setupNotificationChannels() {
   }
 }
 
-// Configure how notifications are handled when app is in foreground
+// Configure how notifications are handled when app is in foreground.
+// SDK 54 split shouldShowAlert into shouldShowBanner + shouldShowList.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -90,8 +92,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<Notifications.EventSubscription | undefined>(undefined);
+  const responseListener = useRef<Notifications.EventSubscription | undefined>(undefined);
   const navigationRef = useRef<any>(null);
 
   /**
@@ -305,6 +307,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const refreshUnreadCount = async (): Promise<void> => {
     if (!user?.id) {
       setUnreadCount(0);
+      await setBadgeCount(0);
       return;
     }
     try {
@@ -315,7 +318,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         .eq('read', false);
 
       if (!error) {
-        setUnreadCount(count ?? 0);
+        const next = count ?? 0;
+        setUnreadCount(next);
+        // Keep the OS app-icon badge in lockstep with the real unread count
+        await setBadgeCount(next);
       }
     } catch (error) {
       console.error('Error fetching unread count:', error);
@@ -338,12 +344,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       
       // Update state
       setNotification(notification);
-      
-      // Increment badge count
-      const currentBadge = await getBadgeCount();
-      await setBadgeCount(currentBadge + 1);
-      setUnreadCount(prev => prev + 1);
-      
+
+      // Reconcile against the database rather than optimistically incrementing,
+      // so the badge can't drift from the true unread count
+      await refreshUnreadCount();
+
       // Show in-app alert for foreground notifications
       const { title, body } = notification.request.content;
       Alert.alert(
@@ -379,13 +384,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       console.log('Handling notification tap:', response);
       
       const data = response.notification.request.content.data as NotificationData;
-      
-      // Decrement badge count
-      const currentBadge = await getBadgeCount();
-      if (currentBadge > 0) {
-        await setBadgeCount(currentBadge - 1);
-      }
-      
+
+      // Reconcile badge/unread against the database
+      await refreshUnreadCount();
+
       // Navigate to the appropriate screen using navigation utility
       if (navigationRef.current) {
         navigateFromNotification(data, navigationRef.current);
@@ -424,13 +426,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     });
 
     return () => {
-      // Only cleanup if removeNotificationSubscription exists (not in Expo Go)
-      if (notificationListener.current && Notifications.removeNotificationSubscription) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
-      }
-      if (responseListener.current && Notifications.removeNotificationSubscription) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
+      // SDK 54: subscriptions are removed via their own .remove() method
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
     };
   }, []);
 
@@ -447,6 +445,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setUnreadCount(0);
     }
   }, [user?.id, session]);
+
+  // Reconcile the unread count whenever the app returns to the foreground,
+  // so a notification read on another device (or tapped from the OS) is reflected
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && user?.id) {
+        refreshUnreadCount();
+      }
+    });
+    return () => sub.remove();
+  }, [user?.id]);
 
   return (
     <NotificationContext.Provider

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import Input from '../../components/ui/Input';
@@ -12,7 +11,6 @@ import { colors, spacing, typography, radii } from '../../theme';
 const TOTAL_STEPS = 8;
 
 export default function GroupJoinScreen({ navigation }: any) {
-  const { session } = useAuth();
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,24 +23,22 @@ export default function GroupJoinScreen({ navigation }: any) {
     setLoading(true);
     setError('');
     try {
-      const { data: group, error: groupErr } = await supabase
-        .from('groups')
-        .select('id, name')
-        .eq('access_code', accessCode.trim().toUpperCase())
-        .single();
+      // SECURITY DEFINER RPC: validates the code and sets group_id server-side
+      // without exposing other groups or their access codes
+      const { error: joinErr } = await supabase.rpc('join_group_with_code', {
+        p_code: accessCode.trim(),
+      });
 
-      if (groupErr || !group) {
-        setError('Code not found — check with your chapter admin');
+      if (joinErr) {
+        setError(
+          joinErr.message?.includes('Invalid access code')
+            ? 'Code not found — check with your chapter admin'
+            : joinErr.message || 'Failed to join. Try again.'
+        );
         setLoading(false);
         return;
       }
 
-      const { error: updateErr } = await supabase
-        .from('users')
-        .update({ group_id: group.id, updated_at: new Date().toISOString() })
-        .eq('id', session!.user.id);
-
-      if (updateErr) throw updateErr;
       navigation.navigate('DDInterest');
     } catch (err: any) {
       setError(err?.message || 'Failed to join. Try again.');

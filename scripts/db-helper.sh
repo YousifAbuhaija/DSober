@@ -3,7 +3,7 @@
 
 set -e
 
-CLOUD_PROJECT_REF="hdkvgrpshgswdgsqihpp"
+CLOUD_PROJECT_REF="ybsinrajanwhabgivsvv"
 CLOUD_DASHBOARD="https://supabase.com/dashboard/project/${CLOUD_PROJECT_REF}"
 
 echo "🌩️  Supabase Cloud Helper"

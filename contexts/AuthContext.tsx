@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Linking } from 'react-native';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { User } from '../types/database.types';
@@ -7,10 +8,13 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  passwordRecovery: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  completePasswordReset: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +23,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
+
+  // Auth email links (password reset, signup confirmation) deep-link back as
+  // dsober://...?code=... — exchange the PKCE code for a session.
+  useEffect(() => {
+    const handleAuthUrl = (url: string | null) => {
+      if (!url) return;
+      let code: string | null = null;
+      try {
+        code = new URL(url).searchParams.get('code');
+      } catch {
+        return;
+      }
+      if (!code) return;
+      supabase.auth.exchangeCodeForSession(code).catch((err) => {
+        console.error('Error exchanging auth code from deep link:', err);
+      });
+    };
+
+    Linking.getInitialURL().then(handleAuthUrl);
+    const sub = Linking.addEventListener('url', ({ url }) => handleAuthUrl(url));
+    return () => sub.remove();
+  }, []);
 
   // Fetch user profile from database
   const fetchUserProfile = async (userId: string): Promise<User | null> => {
@@ -135,6 +162,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!isMounted) return;
         setSession(session);
 
+        if (_event === 'PASSWORD_RECOVERY') {
+          setPasswordRecovery(true);
+        }
+
         const newUserId = session?.user?.id ?? null;
         if (newUserId) {
           // Only re-subscribe if the user actually changed to avoid
@@ -182,6 +213,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        // Confirmation link opens the app and signs the user in via the
+        // deep-link code exchange above
+        emailRedirectTo: 'dsober://auth-callback',
+      },
     });
 
     if (error) throw error;
@@ -199,6 +235,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setUser(null);
+    setPasswordRecovery(false);
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'dsober://reset-password',
+    });
+    if (error) throw error;
+  };
+
+  const completePasswordReset = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    setPasswordRecovery(false);
   };
 
   const refreshUser = async () => {
@@ -220,10 +270,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         user,
         loading,
+        passwordRecovery,
         signIn,
         signUp,
         signOut,
         refreshUser,
+        requestPasswordReset,
+        completePasswordReset,
       }}
     >
       {children}

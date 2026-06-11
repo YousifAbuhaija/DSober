@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { getDisplayUrl } from '../../utils/storage';
 import { colors, radii, typography } from '../../theme';
 
 interface Props {
@@ -9,6 +10,19 @@ interface Props {
 }
 
 export default function Avatar({ uri, name, size = 40 }: Props) {
+  const [displayUri, setDisplayUri] = useState<string | null>(null);
+
+  // Private-bucket URLs must be exchanged for signed URLs before rendering
+  useEffect(() => {
+    let alive = true;
+    getDisplayUrl(uri).then((resolved) => {
+      if (alive) setDisplayUri(resolved);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [uri]);
+
   const initials = name
     ? name
         .split(' ')
@@ -19,10 +33,10 @@ export default function Avatar({ uri, name, size = 40 }: Props) {
 
   const fontSize = size * 0.36;
 
-  if (uri) {
+  if (displayUri) {
     return (
       <Image
-        source={{ uri }}
+        source={{ uri: displayUri }}
         style={[styles.img, { width: size, height: size, borderRadius: size / 2 }]}
       />
     );

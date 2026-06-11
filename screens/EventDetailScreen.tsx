@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -71,10 +72,16 @@ export default function EventDetailScreen() {
   const [assigningDD, setAssigningDD] = useState(false);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [markingCompleted, setMarkingCompleted] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { fetchEventDetails(); }, [eventId]);
 
   useFocusEffect(React.useCallback(() => { fetchEventDetails(); }, [eventId]));
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try { await fetchEventDetails(); } finally { setRefreshing(false); }
+  };
 
   const fetchEventDetails = async () => {
     try {
@@ -150,9 +157,11 @@ export default function EventDetailScreen() {
       const { data: existing } = await supabase
         .from('dd_requests').select('id, status').eq('event_id', eventId).eq('user_id', user.id).single();
       if (existing) {
-        await supabase.from('dd_requests').update({ status: 'pending' }).eq('id', existing.id);
+        const { error } = await supabase.from('dd_requests').update({ status: 'pending' }).eq('id', existing.id);
+        if (error) throw error;
       } else {
-        await supabase.from('dd_requests').insert({ event_id: eventId, user_id: user.id, status: 'pending' });
+        const { error } = await supabase.from('dd_requests').insert({ event_id: eventId, user_id: user.id, status: 'pending' });
+        if (error) throw error;
       }
       Alert.alert('Request Sent', 'Your DD request has been submitted to the admin.');
       fetchEventDetails();
@@ -190,9 +199,11 @@ export default function EventDetailScreen() {
       const { data: existing } = await supabase
         .from('dd_assignments').select('*').eq('event_id', eventId).eq('user_id', selectedUserId).single();
       if (existing) {
-        await supabase.from('dd_assignments').update({ status: 'assigned', updated_at: new Date().toISOString() }).eq('id', existing.id);
+        const { error } = await supabase.from('dd_assignments').update({ status: 'assigned', updated_at: new Date().toISOString() }).eq('id', existing.id);
+        if (error) throw error;
       } else {
-        await supabase.from('dd_assignments').insert({ event_id: eventId, user_id: selectedUserId, status: 'assigned' });
+        const { error } = await supabase.from('dd_assignments').insert({ event_id: eventId, user_id: selectedUserId, status: 'assigned' });
+        if (error) throw error;
       }
       Alert.alert('Assigned', 'DD assigned successfully.');
       setAssignModalVisible(false);
@@ -279,7 +290,14 @@ export default function EventDetailScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand.primary} />
+      }
+    >
 
       {/* Header */}
       <View style={styles.header}>

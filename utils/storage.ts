@@ -1,5 +1,39 @@
 import { supabase } from '../lib/supabase';
 
+// All four app buckets are private; stored URLs are exchanged for signed ones at render time
+const PRIVATE_BUCKETS = ['profile-photos', 'license-photos', 'sep-selfies', 'sep-audio'];
+const SIGNED_URL_TTL_SEC = 60 * 60;
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
+/**
+ * Resolve a stored storage URL to something renderable.
+ * URLs in the DB are public-format Supabase storage URLs (a stable
+ * bucket+path identifier); private buckets reject them when fetched raw,
+ * so swap in a short-lived signed URL. Non-storage URLs pass through.
+ */
+export async function getDisplayUrl(storedUrl: string | null | undefined): Promise<string | null> {
+  if (!storedUrl) return null;
+
+  const match = storedUrl.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+?)(?:\?.*)?$/);
+  if (!match) return storedUrl;
+  const [, bucket, path] = match;
+  if (!PRIVATE_BUCKETS.includes(bucket)) return storedUrl;
+
+  const cached = signedUrlCache.get(storedUrl);
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
+
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, SIGNED_URL_TTL_SEC);
+  if (error || !data?.signedUrl) {
+    console.error('Failed to sign storage URL:', error?.message);
+    return null;
+  }
+  signedUrlCache.set(storedUrl, {
+    url: data.signedUrl,
+    expiresAt: Date.now() + SIGNED_URL_TTL_SEC * 1000,
+  });
+  return data.signedUrl;
+}
+
 /**
  * Upload an image to Supabase storage
  * @param uri - Local file URI from image picker or camera

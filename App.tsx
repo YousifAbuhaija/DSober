@@ -5,8 +5,11 @@ import RootNavigator from './navigation/RootNavigator';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
+import { initSentry, wrapApp } from './lib/sentry';
 
-export default function App() {
+initSentry();
+
+function App() {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,3 +59,5 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+
+export default wrapApp(App);

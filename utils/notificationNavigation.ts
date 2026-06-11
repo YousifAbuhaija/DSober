@@ -47,21 +47,23 @@ export function navigateFromNotification(
     return;
   }
 
-  // If screen is already specified in data, use it directly
+  // Prefer the typed mapping: it uses nested routes, which reach screens
+  // inside tab stacks that aren't mounted yet. The flat `screen` hint sent
+  // by the server can't, so it's only a fallback for unmapped types.
+  const route = getNavigationRoute(data);
+  if (route) {
+    console.log('Navigating to:', route.screen, route.params);
+    navigationRef.navigate(route.screen, route.params || {});
+    return;
+  }
+
   if (data.screen) {
     console.log('Navigating to specified screen:', data.screen, data.params);
     navigationRef.navigate(data.screen, data.params || {});
     return;
   }
 
-  // Otherwise, map notification type to screen
-  const route = getNavigationRoute(data);
-  if (route) {
-    console.log('Navigating to:', route.screen, route.params);
-    navigationRef.navigate(route.screen, route.params || {});
-  } else {
-    console.warn('No navigation route found for notification data:', data);
-  }
+  console.warn('No navigation route found for notification data:', data);
 }
 
 /**
@@ -133,12 +135,24 @@ export function getNavigationRoute(data: NotificationData): NavigationRoute | nu
         },
       };
 
-    // DD request status - navigate to DD upgrade flow
+    // Approved: continue into the DD upgrade flow (driver info form)
     case 'dd_request_approved':
-    case 'dd_request_rejected':
       return {
         screen: 'DDUpgrade',
       };
+
+    // Rejected: show the event where the request status banner lives —
+    // pushing a rejected user into the "Become a DD" form is wrong
+    case 'dd_request_rejected':
+      return eventId
+        ? {
+            screen: 'Events',
+            params: {
+              screen: 'EventDetail',
+              params: { eventId },
+            },
+          }
+        : { screen: 'Events' };
 
     // Event notifications - navigate to event detail
     case 'event_active':
