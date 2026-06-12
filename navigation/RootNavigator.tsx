@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
@@ -15,118 +16,89 @@ const Stack = createStackNavigator();
 export default function RootNavigator() {
   const { session, user, loading, passwordRecovery } = useAuth();
   const [hasSEPBaseline, setHasSEPBaseline] = useState(false);
-  const [checkingBaseline, setCheckingBaseline] = useState(true);
+  // Tracks which user id we've finished the baseline check for. Used so we never
+  // route on stale data (the gap between "auth resolved" and "baseline known").
+  const [baselineCheckedFor, setBaselineCheckedFor] = useState<string | null>(null);
   const [recheckTrigger, setRecheckTrigger] = useState(0);
 
-  // Check if user has completed SEP baseline
   useEffect(() => {
-    const checkSEPBaseline = async () => {
-      if (!user?.id) {
-        setHasSEPBaseline(false);
-        setCheckingBaseline(false);
-        return;
-      }
-
-      setCheckingBaseline(true);
-      
+    if (!user?.id) {
+      setHasSEPBaseline(false);
+      setBaselineCheckedFor(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
       try {
         const { data, error } = await supabase
           .from('sep_baselines')
           .select('id')
           .eq('user_id', user.id)
           .single();
-
-        const hasBaseline = !!data && !error;
-        console.log('SEP baseline check:', { hasBaseline, userId: user.id });
-        setHasSEPBaseline(hasBaseline);
-      } catch (error) {
-        console.error('Error checking SEP baseline:', error);
-        setHasSEPBaseline(false);
+        if (!cancelled) setHasSEPBaseline(!!data && !error);
+      } catch {
+        if (!cancelled) setHasSEPBaseline(false);
       } finally {
-        setCheckingBaseline(false);
+        if (!cancelled) setBaselineCheckedFor(user.id);
       }
-    };
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, recheckTrigger]);
 
-    checkSEPBaseline();
-  }, [user?.id, recheckTrigger]); // Re-check when user ID changes or manual trigger
-  
-  // Listen for when all onboarding fields are filled to trigger a re-check
+  // During onboarding the user id stays the same while fields fill in; re-check
+  // the baseline so the app advances to the main experience once SEP is done.
   useEffect(() => {
     if (user?.name && user?.groupId && !hasSEPBaseline) {
-      // User has completed basic onboarding steps, trigger SEP baseline re-check
-      console.log('Onboarding fields complete, triggering SEP baseline re-check');
-      setRecheckTrigger(prev => prev + 1);
+      setRecheckTrigger((p) => p + 1);
     }
   }, [user?.name, user?.groupId, hasSEPBaseline]);
 
-  // Authenticated - check if profile is complete
-  // Profile is complete when:
-  // 1. User profile exists in database
-  // 2. Basic info is filled (name, groupId)
-  // 3. If user is a DD (isDD = true), they must have provided driver info
-  // 4. SEP baseline is established
   const isProfileComplete = useMemo(() => {
-    // If no user profile exists yet, onboarding is not complete
-    if (!user) {
-      console.log('Profile completion check: No user profile exists yet');
-      return false;
-    }
-    
+    if (!user) return false;
     const hasBasicInfo = user.name && user.groupId;
     const hasCompletedDDFlow = !user.isDD || (user.carMake && user.carModel && user.carPlate);
-    const complete = hasBasicInfo && hasCompletedDDFlow && hasSEPBaseline;
-    
-    console.log('Profile completion check:', {
-      hasBasicInfo,
-      hasCompletedDDFlow,
-      hasSEPBaseline,
-      isComplete: complete,
-      userName: user.name,
-      userGroupId: user.groupId,
-    });
-    
-    return complete;
+    return Boolean(hasBasicInfo && hasCompletedDDFlow && hasSEPBaseline);
   }, [user?.name, user?.groupId, user?.isDD, user?.carMake, user?.carModel, user?.carPlate, hasSEPBaseline]);
 
-  // Show loading screen while checking auth state or SEP baseline
-  if (loading || checkingBaseline) {
+  // Ready = auth resolved AND (no user, or this user's baseline has been checked).
+  const baselineResolved = !user || baselineCheckedFor === user.id;
+  const appReady = !loading && baselineResolved;
+
+  // Once ready, never fall back to the native splash; a later transition (e.g. a
+  // fresh login) shows the in-app loader instead of a wrong screen.
+  const hasBeenReadyRef = useRef(false);
+  if (appReady) hasBeenReadyRef.current = true;
+
+  const onNavReady = useCallback(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  // Initial load: keep the native splash visible (render nothing).
+  if (!hasBeenReadyRef.current) {
+    return null;
+  }
+
+  // Later transitions while data resolves — branded loader, not a flashed screen.
+  if (!appReady) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.brand.primary }]}>
-        <Text style={{ fontSize: 48, fontWeight: 'bold', color: '#fff', marginBottom: 20 }}>DSober</Text>
+        <Text style={styles.wordmark}>DSober</Text>
         <ActivityIndicator size="large" color={colors.bg.elevated} />
       </View>
     );
   }
 
-  // Arrived via a password-reset link — force setting a new password first
-  if (session && passwordRecovery) {
-    return (
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="SetNewPassword" component={SetNewPasswordScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    );
-  }
-
-  // Not authenticated - show auth screen
-  if (!session) {
-    return (
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Auth" component={AuthScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    );
-  }
-
   return (
-    <NavigationContainer>
+    <NavigationContainer onReady={onNavReady}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isProfileComplete ? (
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        ) : (
+        {!session ? (
+          <Stack.Screen name="Auth" component={AuthScreen} />
+        ) : passwordRecovery ? (
+          <Stack.Screen name="SetNewPassword" component={SetNewPasswordScreen} />
+        ) : isProfileComplete ? (
           <Stack.Screen name="MainApp" component={MainAppScreen} />
+        ) : (
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         )}
       </Stack.Navigator>
     </NavigationContainer>
@@ -138,6 +110,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.bg.canvas,
+  },
+  wordmark: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 20,
   },
 });

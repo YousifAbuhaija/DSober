@@ -110,6 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchUserProfile(userId).then((profile) => {
         if (!isMounted) return;
         setUser(profile);
+        // Initial profile resolved — safe to leave the loading gate.
+        setLoading(false);
       });
 
       if (realtimeChannel) {
@@ -172,19 +174,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // tearing down the realtime channel on every token refresh.
           if (newUserId !== lastUserId) {
             lastUserId = newUserId;
+            // Hold the loading gate until the profile resolves, so the
+            // navigator routes to the final screen instead of flashing one.
+            setLoading(true);
             // Defer supabase calls out of the auth lock to avoid a deadlock.
             setTimeout(() => {
               if (!isMounted) return;
               loadProfileAndSubscribe(newUserId);
             }, 0);
+          } else {
+            // Same user (token refresh) — already resolved.
+            setLoading(false);
           }
         } else {
           lastUserId = null;
           setUser(null);
           teardownRealtime();
+          setLoading(false);
         }
-
-        setLoading(false);
       }
     );
 
@@ -196,17 +203,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-
-    if (data.user) {
-      const profile = await fetchUserProfile(data.user.id);
-      setUser(profile);
-    }
+    // onAuthStateChange loads the profile and manages the loading gate.
   };
 
   const signUp = async (email: string, password: string): Promise<{ needsEmailConfirmation: boolean }> => {

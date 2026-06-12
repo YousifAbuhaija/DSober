@@ -183,16 +183,18 @@ export default function AuthScreen() {
             }
           />
 
-          {mode === 'login' && (
-            <TouchableOpacity
-              style={styles.forgotRow}
-              onPress={handleForgotPassword}
-              disabled={loading}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </TouchableOpacity>
-          )}
+          {/* Always rendered (reserves height) so toggling modes doesn't shift the layout */}
+          <View style={styles.forgotRow}>
+            {mode === 'login' && (
+              <TouchableOpacity
+                onPress={handleForgotPassword}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           <Button
             onPress={handleSubmit}
@@ -276,7 +278,8 @@ const styles = StyleSheet.create({
   },
   forgotRow: {
     alignSelf: 'flex-end',
-    paddingVertical: spacing.xs,
+    minHeight: 30,
+    justifyContent: 'center',
   },
   forgotText: {
     ...typography.caption,
