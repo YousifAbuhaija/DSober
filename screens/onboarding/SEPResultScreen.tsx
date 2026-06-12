@@ -6,6 +6,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { supabase } from '../../lib/supabase';
 import { evaluateSEPAttempt } from '../../utils/sep';
+import { getCurrentLocation } from '../../utils/location';
 import { SEPBaseline } from '../../types/database.types';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
@@ -67,9 +68,15 @@ export default function SEPResultScreen() {
         }).select().single();
 
       if (evaluation.pass) {
+        // Capture check-in location so riders can see how far this DD is.
+        // Optional — if location is unavailable the session is still created.
+        let coords: { latitude: number; longitude: number } | null = null;
+        try { coords = await getCurrentLocation(); } catch { coords = null; }
         await supabase.from('dd_sessions').insert({
           user_id: user.id, event_id: eventId,
           started_at: new Date().toISOString(), is_active: true,
+          start_latitude: coords?.latitude ?? null,
+          start_longitude: coords?.longitude ?? null,
         });
       } else {
         await Promise.all([

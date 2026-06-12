@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Event } from '../types/database.types';
-import { getCurrentLocation } from '../utils/location';
+import { getCurrentLocation, calculateDistance } from '../utils/location';
 import { updateEventStatusesToActive } from '../utils/eventStatus';
 import { mapEvent } from '../utils/mappers';
 import Avatar from '../components/ui/Avatar';
@@ -35,6 +35,8 @@ interface ActiveDD {
   carPlate?: string;
   phoneNumber?: string;
   distance?: number;
+  startLatitude?: number;
+  startLongitude?: number;
   sessionId: string;
   profilePhotoUrl?: string;
 }
@@ -50,11 +52,12 @@ export default function DDsListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
+  const [riderLoc, setRiderLoc] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const loadAll = useCallback(async () => {
     if (!user?.groupId) { setLoading(false); return; }
     try {
-      getCurrentLocation().catch(() => setLocationDenied(true));
+      getCurrentLocation().then(setRiderLoc).catch(() => setLocationDenied(true));
       await updateEventStatusesToActive(user.groupId);
       const { data, error } = await supabase
         .from('events')
@@ -79,7 +82,7 @@ export default function DDsListScreen() {
     try {
       const { data: sessions } = await supabase
         .from('dd_sessions')
-        .select('id, user_id')
+        .select('id, user_id, start_latitude, start_longitude')
         .eq('event_id', eventId)
         .eq('is_active', true);
       if (!sessions?.length) { setActiveDDs([]); return; }
@@ -88,16 +91,21 @@ export default function DDsListScreen() {
         .from('users')
         .select('id, name, car_make, car_model, car_plate, phone_number, profile_photo_url')
         .in('id', userIds);
-      const dds: ActiveDD[] = (users || []).map((u) => ({
-        userId: u.id,
-        name: u.name,
-        carMake: u.car_make ?? undefined,
-        carModel: u.car_model ?? undefined,
-        carPlate: u.car_plate ?? undefined,
-        phoneNumber: u.phone_number ?? undefined,
-        profilePhotoUrl: u.profile_photo_url ?? undefined,
-        sessionId: sessions.find((s) => s.user_id === u.id)?.id ?? '',
-      }));
+      const dds: ActiveDD[] = (users || []).map((u) => {
+        const sess = sessions.find((s) => s.user_id === u.id);
+        return {
+          userId: u.id,
+          name: u.name,
+          carMake: u.car_make ?? undefined,
+          carModel: u.car_model ?? undefined,
+          carPlate: u.car_plate ?? undefined,
+          phoneNumber: u.phone_number ?? undefined,
+          profilePhotoUrl: u.profile_photo_url ?? undefined,
+          startLatitude: sess?.start_latitude != null ? Number(sess.start_latitude) : undefined,
+          startLongitude: sess?.start_longitude != null ? Number(sess.start_longitude) : undefined,
+          sessionId: sess?.id ?? '',
+        };
+      });
       setActiveDDs(dds);
     } catch {
       setActiveDDs([]);
@@ -112,6 +120,24 @@ export default function DDsListScreen() {
   useEffect(() => {
     if (selectedEventId) loadDDs(selectedEventId);
   }, [selectedEventId]);
+
+  // Distance from the rider to each DD's check-in location; nearest first.
+  // DDs without a stored location (or when location is denied) sink to the bottom.
+  const ddsWithDistance = useMemo(() => {
+    const withDist = activeDDs.map((dd) => ({
+      ...dd,
+      distance:
+        riderLoc && dd.startLatitude != null && dd.startLongitude != null
+          ? calculateDistance(riderLoc.latitude, riderLoc.longitude, dd.startLatitude, dd.startLongitude)
+          : undefined,
+    }));
+    return withDist.sort((a, b) => {
+      if (a.distance == null && b.distance == null) return 0;
+      if (a.distance == null) return 1;
+      if (b.distance == null) return -1;
+      return a.distance - b.distance;
+    });
+  }, [activeDDs, riderLoc]);
 
   const handleCall = async (phone: string | undefined) => {
     if (!phone) return;
@@ -159,7 +185,7 @@ export default function DDsListScreen() {
       )}
 
       <FlatList
-        data={activeDDs}
+        data={ddsWithDistance}
         keyExtractor={(item) => item.userId}
         contentContainerStyle={activeDDs.length === 0 ? styles.emptyList : undefined}
         showsVerticalScrollIndicator={false}
@@ -189,7 +215,7 @@ export default function DDsListScreen() {
         renderItem={({ item, index }) => (
           <DDRow
             dd={item}
-            isLast={index === activeDDs.length - 1}
+            isLast={index === ddsWithDistance.length - 1}
             onPress={() => navigation.navigate('DDDetail', { ddUserId: item.userId, eventId: selectedEventId })}
             onCall={() => handleCall(item.phoneNumber)}
           />
@@ -221,6 +247,12 @@ function DDRow({
           </View>
         ) : null}
       </View>
+      {dd.distance != null ? (
+        <View style={styles.distPill}>
+          <Ionicons name="navigate" size={11} color={colors.brand.primary} />
+          <Text style={styles.distText}>{dd.distance} mi</Text>
+        </View>
+      ) : null}
       {dd.phoneNumber ? (
         <TouchableOpacity
           onPress={(e) => { e.stopPropagation(); onCall(); }}
@@ -287,5 +319,15 @@ const styles = StyleSheet.create({
   ddName: { ...typography.bodyBold, color: colors.text.primary, marginBottom: 3 },
   carRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   carText: { ...typography.caption, color: colors.text.tertiary, flex: 1 },
+  distPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.brand.faint,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radii.sm,
+  },
+  distText: { ...typography.caption, color: colors.brand.primary, fontWeight: '700', fontSize: 12 },
   callButton: { paddingHorizontal: spacing.sm },
 });
