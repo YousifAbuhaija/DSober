@@ -33,6 +33,9 @@ Sentry is wired but disabled until configured:
       `REPLACE_WITH_SENTRY_ORG` / `REPLACE_WITH_SENTRY_PROJECT`.
 - [ ] Set `SENTRY_AUTH_TOKEN` in the EAS build environment (for source maps):
       `eas secret:create --name SENTRY_AUTH_TOKEN --value <token>`.
+- [ ] Then remove `SENTRY_DISABLE_AUTO_UPLOAD` from `eas.json` → `build.production.env`
+      (it's set to `"true"` now so the build doesn't fail on the missing token;
+      once the token exists, drop it to get de-minified stack traces).
 
 ## 3. TestFlight build + submit config — `P1.6`
 
