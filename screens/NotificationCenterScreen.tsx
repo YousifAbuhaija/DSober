@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -155,7 +155,8 @@ export default function NotificationCenterScreen({ navigation }: any) {
     if (item.data) navigateFromNotification(item.data, navigation);
   };
 
-  const grouped: GroupedNotifications[] = (() => {
+  // Group once per data change instead of on every render (refresh, paging, etc.)
+  const grouped = useMemo<GroupedNotifications[]>(() => {
     const map: Record<string, NotificationItem[]> = {};
     notifications.forEach((n) => {
       const key = formatDateKey(new Date(n.created_at));
@@ -163,7 +164,7 @@ export default function NotificationCenterScreen({ navigation }: any) {
       map[key].push(n);
     });
     return Object.entries(map).map(([date, notifs]) => ({ date, notifications: notifs }));
-  })();
+  }, [notifications]);
 
   if (loading && !refreshing) return <LoadingScreen message="Loading notifications…" />;
 
@@ -172,6 +173,10 @@ export default function NotificationCenterScreen({ navigation }: any) {
       <FlatList
         data={grouped}
         keyExtractor={(item) => item.date}
+        removeClippedSubviews
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={9}
         showsVerticalScrollIndicator={false}
         automaticallyAdjustContentInsets={false}
         contentInsetAdjustmentBehavior="never"

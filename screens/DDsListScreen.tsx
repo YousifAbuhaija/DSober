@@ -187,6 +187,10 @@ export default function DDsListScreen() {
       <FlatList
         data={ddsWithDistance}
         keyExtractor={(item) => item.userId}
+        removeClippedSubviews
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
         contentContainerStyle={activeDDs.length === 0 ? styles.emptyList : undefined}
         showsVerticalScrollIndicator={false}
         refreshControl={

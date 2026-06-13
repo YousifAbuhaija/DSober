@@ -179,6 +179,15 @@ function TabNavigator() {
         tabBarInactiveTintColor: colors.text.tertiary,
         tabBarLabelStyle: styles.tabLabel,
         tabBarShowLabel: true,
+        // Subtle native cross-tab motion (built into bottom-tabs v7 via
+        // react-native-screens) instead of an abrupt instant swap.
+        animation: 'shift',
+        // Keep tabs mounted but freeze inactive ones: preserves scroll/state
+        // and stops off-screen tabs from re-rendering.
+        lazy: true,
+        freezeOnBlur: true,
+        // Match the app background so transitions never flash white.
+        sceneStyle: { backgroundColor: colors.bg.canvas },
       }}
     >
       <Tab.Screen

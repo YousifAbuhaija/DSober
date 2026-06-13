@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -54,15 +54,32 @@ export default function EventsListScreen() {
 
   useFocusEffect(useCallback(() => { refetch(); }, [user?.groupId]));
 
-  if (loading && !events) return <LoadingScreen message="Loading events…" />;
-
   const eventList = events ?? [];
 
-  const sections = [
+  // Derive sections once per data change rather than on every render.
+  const sections = useMemo(() => [
     { title: 'Active',    data: eventList.filter(e => e.status === 'active') },
     { title: 'Upcoming',  data: eventList.filter(e => e.status === 'upcoming') },
     { title: 'Completed', data: eventList.filter(e => e.status === 'completed') },
-  ].filter(s => s.data.length > 0);
+  ].filter(s => s.data.length > 0), [eventList]);
+
+  // Stable handler so memoized rows don't re-render on every parent render.
+  const handlePressEvent = useCallback(
+    (eventId: string) => navigation.navigate('EventDetail', { eventId }),
+    [navigation]
+  );
+
+  const renderItem = useCallback(({ item, index, section }: any) => (
+    <EventRow event={item} isLast={index === section.data.length - 1} onPress={handlePressEvent} />
+  ), [handlePressEvent]);
+
+  const renderSectionHeader = useCallback(({ section }: any) => (
+    <View style={styles.sectionLabel}>
+      <Text style={styles.sectionLabelText}>{section.title.toUpperCase()}</Text>
+    </View>
+  ), []);
+
+  if (loading && !events) return <LoadingScreen message="Loading events…" />;
 
   return (
     <View style={styles.container}>
@@ -78,15 +95,12 @@ export default function EventsListScreen() {
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}
-          renderItem={({ item, index, section }) => {
-            const isLast = index === section.data.length - 1;
-            return <EventRow event={item} isLast={isLast} onPress={() => navigation.navigate('EventDetail', { eventId: item.id })} />;
-          }}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionLabel}>
-              <Text style={styles.sectionLabelText}>{section.title.toUpperCase()}</Text>
-            </View>
-          )}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          removeClippedSubviews
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
           contentContainerStyle={styles.list}
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
@@ -118,14 +132,14 @@ export default function EventsListScreen() {
   );
 }
 
-function EventRow({ event, isLast, onPress }: { event: Event; isLast: boolean; onPress: () => void }) {
+const EventRow = React.memo(function EventRow({ event, isLast, onPress }: { event: Event; isLast: boolean; onPress: (id: string) => void }) {
   const cfg = STATUS_CONFIG[event.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.upcoming;
   const isCompleted = event.status === 'completed';
 
   return (
     <TouchableOpacity
       style={[styles.row, isCompleted && styles.rowDimmed]}
-      onPress={onPress}
+      onPress={() => onPress(event.id)}
       activeOpacity={0.7}
     >
       <View style={[styles.iconCircle, { backgroundColor: `${cfg.color}18` }]}>
@@ -150,7 +164,7 @@ function EventRow({ event, isLast, onPress }: { event: Event; isLast: boolean; o
       {!isLast && <View style={styles.divider} />}
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.canvas },

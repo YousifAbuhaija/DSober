@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, Theme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
@@ -12,6 +12,22 @@ import MainAppScreen from '../screens/MainAppScreen';
 import SetNewPasswordScreen from '../screens/SetNewPasswordScreen';
 
 const Stack = createStackNavigator();
+
+// Dark navigation theme so scene/card backgrounds match the app (#080808) —
+// without this, React Navigation paints scenes white and every transition
+// flashes white against the dark UI.
+const navTheme: Theme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: colors.bg.canvas,
+    card: colors.bg.canvas,
+    primary: colors.brand.primary,
+    text: colors.text.primary,
+    border: colors.border.subtle,
+    notification: colors.brand.primary,
+  },
+};
 
 export default function RootNavigator() {
   const { session, user, loading, passwordRecovery } = useAuth();
@@ -89,7 +105,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer onReady={onNavReady}>
+    <NavigationContainer theme={navTheme} onReady={onNavReady}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!session ? (
           <Stack.Screen name="Auth" component={AuthScreen} />
